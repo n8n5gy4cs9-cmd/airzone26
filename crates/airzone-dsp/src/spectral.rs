@@ -505,6 +505,189 @@ impl SpectralShaper {
     }
 }
 
+// ---------------------------------------------------------------- Tuning fix (full-song pitch correction)
+
+const TUNE_HIST: usize = 100;
+
+/// Global tuning correction for full mixes: finds how far the programme sits from the 12-TET grid
+/// (or applies a manual offset) and moves the whole spectrum with a phase vocoder.
+#[derive(Clone, Debug)]
+pub struct TuningFix {
+    pub enabled: bool,
+    /// Detect the offset automatically; otherwise `manual_cents` is used.
+    pub auto: bool,
+    /// Pitch the song's A4 should end up at.
+    pub target_a4: f32,
+    pub manual_cents: f32,
+    /// Strength of the automatic correction (0..1).
+    pub amount: f32,
+    prev_phase: [Vec<f32>; 2],
+    synth_phase: [Vec<f32>; 2],
+    have_prev: bool,
+    hist: [f32; TUNE_HIST],
+    pub detected_cents: f32,
+    pub confidence: f32,
+    pub applied_cents: f32,
+    freq_bins: Vec<f32>,
+    mag_in: Vec<f32>,
+    mag_out: Vec<f32>,
+    tf_out: Vec<f32>,
+}
+
+impl Default for TuningFix {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            auto: true,
+            target_a4: 440.0,
+            manual_cents: 0.0,
+            amount: 1.0,
+            prev_phase: [vec![0.0; BINS], vec![0.0; BINS]],
+            synth_phase: [vec![0.0; BINS], vec![0.0; BINS]],
+            have_prev: false,
+            hist: [0.0; TUNE_HIST],
+            detected_cents: 0.0,
+            confidence: 0.0,
+            applied_cents: 0.0,
+            freq_bins: vec![0.0; BINS],
+            mag_in: vec![0.0; BINS],
+            mag_out: vec![0.0; BINS],
+            tf_out: vec![0.0; BINS],
+        }
+    }
+}
+
+fn wrap_pi(x: f32) -> f32 {
+    let t = std::f32::consts::TAU;
+    x - t * (x / t).round()
+}
+
+impl TuningFix {
+    pub fn reset(&mut self) {
+        self.have_prev = false;
+        self.hist = [0.0; TUNE_HIST];
+        self.applied_cents = 0.0;
+        self.confidence = 0.0;
+        for c in 0..2 {
+            self.prev_phase[c].iter_mut().for_each(|x| *x = 0.0);
+            self.synth_phase[c].iter_mut().for_each(|x| *x = 0.0);
+        }
+    }
+
+    fn apply(&mut self, sr: f32, l: &mut [Complex32], r: &mut [Complex32]) {
+        use crate::stft::{FFT_SIZE, HOP};
+        let two_pi = std::f32::consts::TAU;
+        let hop = HOP as f32;
+        let n = FFT_SIZE as f32;
+        // instantaneous bin frequency (in bins) from the left channel phase advance
+        for k in 0..BINS {
+            let ph = l[k].arg();
+            if self.have_prev {
+                let expected = two_pi * k as f32 * hop / n;
+                let d = wrap_pi(ph - self.prev_phase[0][k] - expected);
+                self.freq_bins[k] = k as f32 + d * n / (two_pi * hop);
+            } else {
+                self.freq_bins[k] = k as f32;
+            }
+            self.mag_in[k] = ((l[k].norm_sqr() + r[k].norm_sqr()) * 0.5).sqrt();
+        }
+        // ---- tuning detection
+        if self.have_prev {
+            let maxm = self.mag_in.iter().cloned().fold(0.0f32, f32::max);
+            for h in self.hist.iter_mut() {
+                *h *= 0.998;
+            }
+            if maxm > 1.0e-5 {
+                for k in 3..BINS - 3 {
+                    let f = self.freq_bins[k] * sr / n;
+                    if !(150.0..=3000.0).contains(&f) || (self.freq_bins[k] - k as f32).abs() > 0.7 {
+                        continue;
+                    }
+                    let m = self.mag_in[k];
+                    if m > 0.03 * maxm && m >= self.mag_in[k - 1] && m >= self.mag_in[k + 1] && m > self.mag_in[k - 2] && m > self.mag_in[k + 2] {
+                        let dev = 12.0 * (f / 440.0).log2();
+                        let frac = dev - dev.round();
+                        let idx = (((frac * 100.0) + 50.0).floor() as isize).clamp(0, TUNE_HIST as isize - 1) as usize;
+                        self.hist[idx] += m;
+                    }
+                }
+            }
+            // smoothed histogram peak
+            let total: f32 = self.hist.iter().sum();
+            if total > 1.0e-3 {
+                let mut best = (0usize, 0.0f32);
+                for i in 0..TUNE_HIST {
+                    let mut acc = 0.0;
+                    for j in -3i32..=3 {
+                        acc += self.hist[(i as i32 + j).rem_euclid(TUNE_HIST as i32) as usize];
+                    }
+                    if acc > best.1 {
+                        best = (i, acc);
+                    }
+                }
+                self.detected_cents = best.0 as f32 - 49.5;
+                self.confidence = (best.1 / total * (TUNE_HIST as f32 / 7.0) / 6.0).clamp(0.0, 1.0);
+            }
+        }
+        // ---- desired shift
+        let desired = if self.auto {
+            if self.confidence > 0.35 {
+                let want = 1200.0 * (self.target_a4 / 440.0).log2() - self.detected_cents;
+                (want * self.amount).clamp(-100.0, 100.0)
+            } else {
+                0.0
+            }
+        } else {
+            self.manual_cents.clamp(-100.0, 100.0)
+        };
+        let slew = if self.auto { 0.15 } else { 1.0 };
+        let diff = desired - self.applied_cents;
+        self.applied_cents += diff.clamp(-slew, slew);
+
+        // ---- phase-vocoder shift
+        let ratio = 2f32.powf(self.applied_cents / 1200.0);
+        if !self.have_prev || (ratio - 1.0).abs() < 2.0e-4 {
+            for (c, spec) in [&*l, &*r].iter().enumerate() {
+                for k in 0..BINS {
+                    let ph = spec[k].arg();
+                    self.prev_phase[c][k] = ph;
+                    self.synth_phase[c][k] = ph;
+                }
+            }
+            self.have_prev = true;
+            return;
+        }
+        for (c, spec) in [l, r].into_iter().enumerate() {
+            // true frequency of every analysis bin from this channel's phase advance
+            for k in 0..BINS {
+                let ph = spec[k].arg();
+                let expected = two_pi * k as f32 * hop / n;
+                let d = wrap_pi(ph - self.prev_phase[c][k] - expected);
+                self.freq_bins[k] = k as f32 + d * n / (two_pi * hop);
+                self.mag_in[k] = spec[k].norm();
+                self.prev_phase[c][k] = ph;
+            }
+            for k2 in 0..BINS {
+                let src = k2 as f32 / ratio;
+                let k0 = src.floor() as usize;
+                if k0 + 1 >= BINS {
+                    self.mag_out[k2] = 0.0;
+                    self.tf_out[k2] = k2 as f32;
+                    continue;
+                }
+                let f = src - k0 as f32;
+                self.mag_out[k2] = self.mag_in[k0] * (1.0 - f) + self.mag_in[k0 + 1] * f;
+                let kn = if f < 0.5 { k0 } else { k0 + 1 };
+                self.tf_out[k2] = self.freq_bins[kn] * ratio;
+            }
+            for k2 in 0..BINS {
+                self.synth_phase[c][k2] = wrap_pi(self.synth_phase[c][k2] + two_pi * hop * self.tf_out[k2] / n);
+                spec[k2] = Complex32::from_polar(self.mag_out[k2], self.synth_phase[c][k2]);
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------- Hub
 
 /// One FFT pass shared by all four spectral modules (so latency is constant).
@@ -514,6 +697,7 @@ pub struct SpectralHub {
     pub match_eq: MatchEq,
     pub stabilizer: Stabilizer,
     pub shaper: SpectralShaper,
+    pub tuning: TuningFix,
     sr: f32,
 }
 
@@ -525,6 +709,7 @@ impl Default for SpectralHub {
             match_eq: MatchEq::default(),
             stabilizer: Stabilizer::default(),
             shaper: SpectralShaper::default(),
+            tuning: TuningFix::default(),
             sr: 44100.0,
         }
     }
@@ -539,6 +724,7 @@ impl SpectralHub {
         self.stft.reset();
         self.stem.reset();
         self.stabilizer.reset();
+        self.tuning.reset();
     }
     pub fn latency(&self) -> usize {
         FFT_SIZE
@@ -549,11 +735,12 @@ impl SpectralHub {
             || self.match_eq.capture != Capture::Off
             || self.stabilizer.enabled
             || self.shaper.enabled
+            || self.tuning.enabled
     }
 
     pub fn process(&mut self, l: &mut [f32], r: &mut [f32]) {
         let sr = self.sr;
-        let Self { stft, stem, match_eq, stabilizer, shaper, .. } = self;
+        let Self { stft, stem, match_eq, stabilizer, shaper, tuning, .. } = self;
         stft.process(l, r, |sl, sr_spec| {
             if match_eq.capture != Capture::Off || match_eq.enabled {
                 match_eq.apply(sr, sl, sr_spec);
@@ -567,6 +754,9 @@ impl SpectralHub {
             }
             if shaper.enabled {
                 shaper.apply(sr, sl, sr_spec);
+            }
+            if tuning.enabled {
+                tuning.apply(sr, sl, sr_spec);
             }
         });
     }
@@ -628,5 +818,63 @@ mod tests {
         let hi = curve[MATCH_BANDS - 20..].iter().cloned().fold(f32::MIN, f32::max);
         let lo = curve[..MATCH_BANDS / 2].iter().cloned().fold(f32::MAX, f32::min);
         assert!(hi > 1.0 || lo < -1.0, "hi {hi} lo {lo}");
+    }
+
+    #[test]
+    fn tuning_fix_detects_and_corrects_detune() {
+        let sr = 48000.0;
+        // chord of A, C#, E partials, tuned 35 cents sharp of 440 grid
+        let detune = 2f32.powf(35.0 / 1200.0);
+        let freqs = [220.0 * detune, 277.18 * detune, 329.63 * detune, 440.0 * detune, 554.37 * detune, 659.25 * detune];
+        let n = 48000 * 8;
+        let src: Vec<f32> = (0..n)
+            .map(|i| {
+                let t = i as f32 / sr;
+                freqs.iter().map(|f| 0.1 * (std::f32::consts::TAU * f * t).sin()).sum()
+            })
+            .collect();
+        let mut hub = SpectralHub::default();
+        hub.prepare(sr);
+        hub.tuning.enabled = true;
+        hub.tuning.auto = true;
+        let mut l = src.clone();
+        let mut r = src.clone();
+        for c in 0..(n / 512) {
+            hub.process(&mut l[c * 512..(c + 1) * 512], &mut r[c * 512..(c + 1) * 512]);
+        }
+        assert!((hub.tuning.detected_cents - 35.0).abs() < 4.0, "detected {}", hub.tuning.detected_cents);
+        assert!((hub.tuning.applied_cents + 35.0).abs() < 6.0, "applied {}", hub.tuning.applied_cents);
+        assert!(l.iter().all(|x| x.is_finite()));
+    }
+
+    #[test]
+    fn tuning_fix_manual_shift_moves_a_sine() {
+        let sr = 48000.0;
+        let n = 48000 * 3;
+        let f_in = 1000.0f32;
+        let src: Vec<f32> = (0..n).map(|i| 0.4 * (std::f32::consts::TAU * f_in * i as f32 / sr).sin()).collect();
+        let mut hub = SpectralHub::default();
+        hub.prepare(sr);
+        hub.tuning.enabled = true;
+        hub.tuning.auto = false;
+        hub.tuning.manual_cents = 50.0;
+        let mut l = src.clone();
+        let mut r = src.clone();
+        for c in 0..(n / 512) {
+            hub.process(&mut l[c * 512..(c + 1) * 512], &mut r[c * 512..(c + 1) * 512]);
+        }
+        // estimate output frequency by zero crossings in the last second
+        let tail = &l[n - 24000..];
+        let mut crossings = 0;
+        for w in tail.windows(2) {
+            if w[0] <= 0.0 && w[1] > 0.0 {
+                crossings += 1;
+            }
+        }
+        let f_out = crossings as f32 / (24000.0 / sr);
+        let cents = 1200.0 * (f_out / f_in).log2();
+        assert!((cents - 50.0).abs() < 8.0, "measured {cents} cents ({f_out} Hz)");
+        let peak = tail.iter().fold(0.0f32, |a, b| a.max(b.abs()));
+        assert!(peak > 0.25 && peak < 0.6, "peak {peak}");
     }
 }

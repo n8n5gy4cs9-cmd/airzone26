@@ -44,7 +44,7 @@ _Updated after every task; each task is committed to `main`._
   - ✅ T26a YIN pitch tracker (accurate to a few cents) + tests
   - ✅ T26b Key/scale model, auto key detection, note targeting with hysteresis, humanize (vibrato-preserving), tolerance, retune speed
   - ✅ T26c PSOLA formant-preserving shifter for Vocal / Instrument modes + tests
-  - ⬜ T26d Full-song mode: global tuning-offset detection + phase-vocoder shifter inside the shared FFT hub + tests
+  - ✅ T26d Full-song mode: global tuning-offset detection + phase-vocoder shifter inside the shared FFT hub + tests
   - ⬜ T26e Plugin integration: 21st module, parameters, latency reporting
   - ⬜ T26f GUI panel: detected note / cents / target display, key + scale, auto-key button
   - ⬜ T26g Pitch presets, manual section, final tests
