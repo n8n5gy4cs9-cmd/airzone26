@@ -15,7 +15,7 @@ _Updated after every task; each task is committed to `main`._
 - ✅ T09 STFT engine (2048, 75 % overlap, tested as identity)
 
 ## Remaining DSP
-- ⬜ T10 Spectral modules: Stem EQ, Match EQ, Stabilizer, Spectral Shaper (single FFT hub)
+- ✅ T10 Spectral modules: Stem EQ, Match EQ, Stabilizer, Spectral Shaper (single FFT hub)
 - ⬜ T11 Unlimiter (upward peak/transient restoration)
 - ⬜ T12 Vintage Compressor, Vintage EQ (Pultec-style), Vintage Limiter, Vintage Tape
 - ⬜ T13 Delay + Reverb
