@@ -31,9 +31,9 @@ _Updated after every task; each task is committed to `main`._
 - ✅ T21 Reference-track loading (WAV) for Match EQ / comparison
 
 ## Build & docs
-- ⬜ T22 GitHub Actions: Windows x64 (10/11) + macOS arm64 (M1 Max) VST3/CLAP, artifacts
-- ⬜ T23 Full HTML manual (`docs/manual.html`)
-- ⬜ T24 README, licensing/trademark notes
+- 🚧 T22 (workflow written; run status checked in T25) GitHub Actions: Windows x64 (10/11) + macOS arm64 (M1 Max) VST3/CLAP, artifacts
+- ✅ T23 Full HTML manual (`docs/manual.html`)
+- ✅ T24 README, licensing/trademark notes
 - ⬜ T25 Verify CI green on all platforms, fix issues
 
 ## Optional (do last)

@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AirZone 26 — User Manual</title>
+<style>
+:root{--bg:#fbfbfc;--fg:#1c2127;--dim:#5b6573;--card:#fff;--line:#e3e7ec;--acc:#0e8f7e;--acc2:#c9740f;--code:#f1f4f7;--warn:#fff4e0;--warnl:#f0c36d}
+@media (prefers-color-scheme:dark){:root{--bg:#101216;--fg:#e6e9ee;--dim:#9aa4b2;--card:#171a20;--line:#2a2f38;--acc:#40d6be;--acc2:#ffaa46;--code:#20242c;--warn:#2b2414;--warnl:#6b5420}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
+nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--card)}
+nav h1{font-size:20px;margin:0 0 4px;color:var(--acc);letter-spacing:.04em}
+nav .v{color:var(--dim);font-size:12px;margin-bottom:16px}
+nav a{display:block;color:var(--fg);text-decoration:none;padding:3px 8px;border-radius:6px;font-size:14px}
+nav a:hover{background:var(--code)}
+nav a.sub{padding-left:22px;color:var(--dim);font-size:13px}
+nav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin:14px 8px 4px}
+main{padding:36px clamp(18px,5vw,64px);max-width:1000px}
+h2{margin-top:56px;padding-top:12px;border-top:1px solid var(--line);font-size:28px}
+h3{margin-top:32px;font-size:20px;color:var(--acc)}
+h4{margin:22px 0 4px;font-size:16px}
+code,kbd{background:var(--code);padding:1px 6px;border-radius:5px;font:13px ui-monospace,Menlo,Consolas,monospace}
+kbd{border:1px solid var(--line);border-bottom-width:2px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow:auto}
+pre code{padding:0;background:none}
+table.t{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+table.t th,table.t td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+table.t th{background:var(--code)}
+.note,.warn{border-left:4px solid var(--acc);background:var(--card);border-radius:0 8px 8px 0;padding:10px 16px;margin:16px 0}
+.warn{border-left-color:var(--acc2);background:var(--warn);border:1px solid var(--warnl);border-left-width:4px}
+.hero{padding:28px 0 8px}
+.hero h1{font-size:44px;margin:0;color:var(--acc);letter-spacing:.03em}
+.hero p{color:var(--dim);font-size:18px;margin:6px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:18px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card b{display:block;color:var(--acc);margin-bottom:2px}
+details{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--card)}
+summary{cursor:pointer;padding:10px 14px;font-weight:600}
+summary .n{color:var(--dim);font-weight:400;font-size:13px;margin-left:8px}
+details table.t{margin:0;border-left:0;border-right:0}
+.flow{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+.flow span{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:13px}
+.flow span.fft{border-color:var(--acc)}
+@media(max-width:860px){.wrap{grid-template-columns:1fr}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}}
+@media print{nav{display:none}.wrap{display:block}details{display:block}details>*{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <h1>AIRZONE 26</h1><div class="v">User Manual · v{{VERSION}}</div>
+  <a href="#intro">1. Introduction</a>
+  <a href="#install">2. Installation</a>
+  <a class="sub" href="#install-win">Windows 10 / 11</a>
+  <a class="sub" href="#install-mac">macOS (Apple Silicon)</a>
+  <a class="sub" href="#reaper">REAPER setup</a>
+  <a href="#quick">3. Quick start</a>
+  <a href="#ui">4. The interface</a>
+  <a href="#chain">5. Signal chain</a>
+  <a href="#modules">6. Modules</a>
+  <div class="grp">Tone</div>
+  <a class="sub" href="#m-eq">Equalizer</a>
+  <a class="sub" href="#m-dyneq">Dynamic EQ</a>
+  <a class="sub" href="#m-match">Match EQ</a>
+  <a class="sub" href="#m-stab">Stabilizer</a>
+  <a class="sub" href="#m-shaper">Spectral Shaper</a>
+  <a class="sub" href="#m-veq">Vintage EQ</a>
+  <div class="grp">Dynamics</div>
+  <a class="sub" href="#m-dyn">Dynamics</a>
+  <a class="sub" href="#m-vcomp">Vintage Comp</a>
+  <a class="sub" href="#m-unlim">Unlimiter</a>
+  <a class="sub" href="#m-impact">Impact</a>
+  <a class="sub" href="#m-lef">Low End Focus</a>
+  <a class="sub" href="#m-bass">Bass Control</a>
+  <div class="grp">Colour &amp; space</div>
+  <a class="sub" href="#m-exc">Exciter</a>
+  <a class="sub" href="#m-tape">Vintage Tape</a>
+  <a class="sub" href="#m-img">Imager</a>
+  <a class="sub" href="#m-delay">Delay</a>
+  <a class="sub" href="#m-rev">Reverb</a>
+  <div class="grp">Rebalance</div>
+  <a class="sub" href="#m-stem">Stem EQ</a>
+  <div class="grp">Output</div>
+  <a class="sub" href="#m-vlim">Vintage Limiter</a>
+  <a class="sub" href="#m-max">Maximizer</a>
+  <a class="sub" href="#dither">Dither</a>
+  <a href="#assistant">7. Master Assistant</a>
+  <a href="#presets">8. Presets</a>
+  <a href="#metering">9. Metering</a>
+  <a href="#workflows">10. Mastering workflows</a>
+  <a href="#latency">11. Latency &amp; rendering</a>
+  <a href="#build">12. Building from source</a>
+  <a href="#trouble">13. Troubleshooting</a>
+  <a href="#reference">14. Parameter reference</a>
+  <a href="#legal">15. Legal &amp; credits</a>
+</nav>
+<main>
+
+<div class="hero">
+  <h1>AirZone 26</h1>
+  <p>Full mastering suite for REAPER — VST3 &amp; CLAP · Windows 10/11 · macOS Apple Silicon</p>
+</div>
+
+<h2 id="intro">1. Introduction</h2>
+<p>AirZone 26 is a mastering plug-in written in Rust. It puts twenty processing modules, a metering section, a <b>Master Assistant</b> and {{PRESET_COUNT}} factory presets behind a single plug-in window, so you can take a finished stereo mix to a release-ready master on the master track of one REAPER project.</p>
+<div class="cards">
+  <div class="card"><b>20 modules</b>EQ, dynamic EQ, match EQ, stabilizer, spectral shaper, stem EQ, multiband dynamics, exciter, imager, bass control, transient shaping, vintage comp/EQ/tape/limiter, delay, reverb, unlimiter and a 5-algorithm maximizer.</div>
+  <div class="card"><b>Reorderable chain</b>Drag modules up and down; the order is saved with your project.</div>
+  <div class="card"><b>Master Assistant</b>Listens to your song, measures it, and suggests explained settings for a genre and loudness target. Fully undoable.</div>
+  <div class="card"><b>{{PRESET_COUNT}} presets</b>Genre masters, loudness targets, problem solvers, stem rebalances, vintage and signature chains — plus your own user presets.</div>
+  <div class="card"><b>True-peak safe</b>Lookahead true-peak limiting, EBU R128 / ITU BS.1770 loudness (momentary, short-term, integrated, LRA).</div>
+  <div class="card"><b>{{PARAM_COUNT}} automatable parameters</b>Everything is automatable from REAPER; presets set whole chains at once.</div>
+</div>
+<div class="note"><b>Honest scope note.</b> AirZone 26 is an independent project <em>inspired by</em> the workflow of modern all-in-one mastering suites. All algorithms are original. In particular, <b>Stem EQ</b> is a signal-processing approximation (harmonic/percussive and stereo-centre analysis) and not a neural-network separator, and the <b>Unlimiter</b> is an upward expander, not a trained declipper. Both are excellent for corrections of a few dB; they will not perform miracles on extreme material.</div>
+
+<h2 id="install">2. Installation</h2>
+<p>Download the build for your system from the project's <em>Actions → Build</em> artifacts or <em>Releases</em> page. Each ZIP contains <code>AirZone 26.vst3</code>, <code>AirZone 26.clap</code>, and this manual.</p>
+<table class="t">
+<tr><th>System</th><th>Archive</th><th>Formats</th></tr>
+<tr><td>Windows 10 / 11, 64-bit (Intel/AMD)</td><td><code>AirZone26-Windows-x64.zip</code></td><td>VST3, CLAP</td></tr>
+<tr><td>macOS 11+ on Apple Silicon (M1, M1 Pro/Max/Ultra, M2, M3 …)</td><td><code>AirZone26-macOS-arm64.zip</code></td><td>VST3, CLAP</td></tr>
+</table>
+
+<h3 id="install-win">Windows 10 / 11</h3>
+<ol>
+<li>Copy <code>AirZone 26.vst3</code> to <code>C:\Program Files\Common Files\VST3\</code>.</li>
+<li>Optionally copy <code>AirZone 26.clap</code> to <code>C:\Program Files\Common Files\CLAP\</code>.</li>
+<li>If Windows SmartScreen blocks the file after download, right-click the ZIP → <em>Properties</em> → tick <em>Unblock</em> before extracting.</li>
+</ol>
+<p>No runtime installation is needed (the C runtime is linked statically).</p>
+
+<h3 id="install-mac">macOS (Apple Silicon)</h3>
+<ol>
+<li>Copy <code>AirZone 26.vst3</code> to <code>~/Library/Audio/Plug-Ins/VST3/</code> (or <code>/Library/Audio/Plug-Ins/VST3/</code> for all users).</li>
+<li>Optionally copy <code>AirZone 26.clap</code> to <code>~/Library/Audio/Plug-Ins/CLAP/</code>.</li>
+<li>The build is ad-hoc signed but not notarised. Remove the download quarantine flag once:
+<pre><code>xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/VST3/AirZone 26.vst3"
+xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</code></pre></li>
+</ol>
+<p>The plug-in is a native <code>arm64</code> binary — REAPER must run as the native Apple Silicon build (not under Rosetta) to load it.</p>
+
+<h3 id="reaper">REAPER setup</h3>
+<ol>
+<li><b>VST3:</b> <em>Options → Preferences → Plug-ins → VST</em>, make sure the VST3 folder above is listed, then click <em>Re-scan</em> (or <em>Clear cache and re-scan</em>).</li>
+<li><b>CLAP:</b> REAPER 7 and newer load CLAP natively from the CLAP folders; use <em>Options → Preferences → Plug-ins → CLAP</em> if you keep them elsewhere.</li>
+<li>Insert it: on the <b>master track</b> click <em>FX</em> → <em>Add</em> → search <code>AirZone 26</code>.</li>
+<li>Put AirZone 26 <b>last</b> in the master FX chain (after any metering you want to keep post-master). Tick <em>Process stereo only</em> is not needed; the plug-in is stereo in / stereo out.</li>
+</ol>
+<div class="note">Tip: right-click the plug-in's FX window title → <em>Pin</em> and use <em>Float</em> for a larger window; the editor is resizable by your host's window frame.</div>
+
+<h2 id="quick">3. Quick start</h2>
+<ol>
+<li>Put the plug-in on the master track and play your song.</li>
+<li>Pick a starting preset from the preset menu at the top (for example <b>Universal Master</b>), or click <b>🎛 Master Assistant</b> and let it listen to the loudest part of the song.</li>
+<li>Play the loudest chorus. Watch the <b>Integrated</b> and <b>True pk</b> meters at the bottom. The <b>Maximizer</b> Gain control sets how hard you push into the ceiling.</li>
+<li>Click modules in the left rail to edit them. The check box next to a name turns it on or off.</li>
+<li>Toggle <b>Bypass</b> (top bar) to compare with the original. Bypass is latency-compensated so the comparison stays aligned, but it is <em>not</em> loudness matched — adjust for level when judging.</li>
+<li>Save your result with <b>💾 Save</b>.</li>
+</ol>
+
+<h2 id="ui">4. The interface</h2>
+<table class="t">
+<tr><th>Area</th><th>What it does</th></tr>
+<tr><td><b>Top bar</b></td><td>Preset browser (◀ ▶ step through presets, the menu lists them by category, hover for a description), <b>Save</b>, <b>Master Assistant</b>, global <b>Bypass</b>, input and output gain, and <b>Dither</b> selection.</td></tr>
+<tr><td><b>Left rail – signal chain</b></td><td>All 20 modules in processing order from top to bottom. The check box enables a module, clicking the name selects it for editing, ▲ ▼ move it in the chain. Modules tagged <code>·fft</code> share one FFT pass (see <a href="#chain">Signal chain</a>). The footer shows the current total latency.</td></tr>
+<tr><td><b>Centre – analyzer</b></td><td>Live spectrum of the chain input (grey) and output (teal). The <em>slope compensation</em> option adds +4.5 dB/octave so typical music appears flat, making tonal imbalances easy to see.</td></tr>
+<tr><td><b>Centre – module editor</b></td><td>Controls of the selected module, with module-specific displays (EQ curve, correction curves, gain-reduction meters …).</td></tr>
+<tr><td><b>Bottom bar</b></td><td>Loudness (momentary / short-term / integrated), true peak, stereo correlation, LRA, input integrated loudness, and gain-reduction meters for the Maximizer, the three Dynamics bands and the Vintage Comp.</td></tr>
+</table>
+<h3>Mouse &amp; keyboard</h3>
+<table class="t">
+<tr><th>Gesture</th><th>Result</th></tr>
+<tr><td>Drag a slider</td><td>Change value. Hold <kbd>Shift</kbd> while dragging for fine control.</td></tr>
+<tr><td>Double-click, or <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+click</td><td>Reset to default.</td></tr>
+<tr><td>Click the value text</td><td>Type a value (units are accepted, e.g. <code>-3</code>, <code>1.5k</code>).</td></tr>
+<tr><td>EQ: drag a node</td><td>Horizontal = frequency, vertical = gain (filters without gain move horizontally only).</td></tr>
+<tr><td>EQ: scroll over a node</td><td>Change the band's Q (bandwidth).</td></tr>
+</table>
+
+<h2 id="chain">5. Signal chain</h2>
+<p>Audio enters through <b>Input gain</b>, passes through every <em>enabled</em> module in the order shown in the rail, goes through <b>Output gain</b> and the optional <b>Dither</b>, and leaves. A disabled module costs nothing and adds no latency.</p>
+<p>Default order:</p>
+<div class="flow">
+<span>Unlimiter</span><span class="fft">Stem EQ</span><span class="fft">Match EQ</span><span>Equalizer</span><span>Dynamic EQ</span><span class="fft">Stabilizer</span><span class="fft">Spectral Shaper</span><span>Bass Control</span><span>Low End Focus</span><span>Dynamics</span><span>Vintage Comp</span><span>Vintage EQ</span><span>Vintage Tape</span><span>Exciter</span><span>Impact</span><span>Imager</span><span>Delay</span><span>Reverb</span><span>Vintage Limiter</span><span>Maximizer</span>
+</div>
+<h3>The FFT group</h3>
+<p><b>Stem EQ, Match EQ, Stabilizer</b> and <b>Spectral Shaper</b> work in the frequency domain (2048-point STFT, 75 % overlap). They share a single analysis/synthesis pass so enabling all four costs the same latency as enabling one (2048 samples). The shared pass runs at the position of the <em>first enabled</em> FFT module in the chain, and the enabled modules inside it always run in the order Match EQ → Stem EQ → Stabilizer → Spectral Shaper.</p>
+<h3>Order guidelines</h3>
+<ul>
+<li><b>Corrective first</b> (Unlimiter, EQ, Dynamic EQ, Stabilizer) then <b>dynamics</b>, then <b>colour</b>, then <b>width</b>, then <b>limiting last</b>.</li>
+<li>Keep the <b>Maximizer</b> at the end — it guarantees the ceiling, so nothing after it should add level.</li>
+<li>Put the <b>Imager</b> after saturation: harmonics generated by the Exciter can then be widened too.</li>
+<li>Use <b>Reset chain order</b> in the rail to return to the default.</li>
+</ul>
+
+<h2 id="modules">6. Modules</h2>
+<p>Every parameter is also listed with its range and default in the <a href="#reference">parameter reference</a>.</p>
+
+<h3 id="m-eq">Equalizer</h3>
+<p>Eight bands. Each band has an on switch, a <b>Type</b> (Bell, Low Shelf, High Shelf, High Pass, Low Pass, Notch), <b>Frequency</b>, <b>Gain</b>, <b>Q</b>, <b>Slope</b> (12/24/36/48 dB/oct for the pass filters) and a <b>Placement</b>:</p>
+<ul><li><b>Stereo</b> – both channels. <b>Mid</b> / <b>Side</b> – only the mid or side signal (for example a side-only high shelf for air). <b>Left</b> / <b>Right</b> – one channel.</li></ul>
+<p>The curve shows the combined response. Band defaults are laid out as a typical mastering EQ: 1 high-pass, 2 low shelf, 3–6 bells, 7 high shelf, 8 low-pass.</p>
+
+<h3 id="m-dyneq">Dynamic EQ</h3>
+<p>Four bell filters whose gain follows the level in their own band. <b>Static Gain</b> is always applied. <b>Dynamic Range</b> is how far the gain may move: <em>negative</em> values cut when the band exceeds <b>Threshold</b> (de-essing, de-muddying), <em>positive</em> values boost. <b>Ratio</b>, <b>Attack</b> and <b>Release</b> shape the response. Use it for problems that come and go.</p>
+
+<h3 id="m-match">Match EQ</h3>
+<p>Captures the average tonal balance (64 log-spaced bands) of two sources and applies the difference.</p>
+<ol>
+<li>Play your mix and click <b>● Learn Source</b> for 20–60 seconds of representative material, then stop.</li>
+<li>Play a reference track and click <b>● Learn Reference (live)</b>; or type the path of a WAV file and click <b>Analyze file</b>. (WAV 16/24/32-bit and 32-bit float are supported.)</li>
+<li>Enable the module. The curve shows the correction. <b>Amount</b> scales it, <b>Smoothing</b> widens its resolution, and <b>Max Correction</b> limits how far any band may be moved.</li>
+</ol>
+<p>Only tonal <em>shape</em> is matched (overall level differences are removed), so loudness is untouched. Captured profiles are saved inside your REAPER project. The plug-in must be <em>playing in real time</em> to learn live; the WAV analysis works offline.</p>
+
+<h3 id="m-stab">Stabilizer</h3>
+<p>A slow, adaptive equaliser (32 bands) that nudges the spectrum toward a target slope. It is meant to keep the tonal balance consistent from section to section, not to paint a new sound. <b>Amount</b> scales the effect, <b>Range</b> limits the maximum boost/cut per band, <b>Target Slope</b> is the desired tilt in dB/octave (−4.5 is typical for finished music), <b>Speed</b> sets how fast it adapts, and <b>Use Reference</b> makes it follow the Match EQ reference's shape. The bar chart shows the correction in real time.</p>
+
+<h3 id="m-shaper">Spectral Shaper</h3>
+<p>A frequency-domain resonance suppressor. It compares each FFT bin with the local average (<b>Selectivity</b> sets how many bins around it count as "local") and reduces peaks that stick out by more than <b>Sensitivity</b> dB, by an amount set by <b>Depth</b>, only between <b>Low Limit</b> and <b>High Limit</b>. <b>Tilt</b> adds a gentle spectral tilt. <b>Listen to Delta</b> plays back only what is being removed — use it to be sure you are taking away harshness and not body.</p>
+
+<h3 id="m-veq">Vintage EQ</h3>
+<p>A passive-EQ-style tone shaper. The low section has a <b>Low Frequency</b> selector (20/30/60/100 Hz), <b>Low Boost</b> and <b>Low Atten</b>; using both at once gives the classic "bigger yet tighter" bass. The high section has a <b>High Boost</b> bell with selectable frequency (3–16 kHz) and <b>Bandwidth</b>, and a <b>High Atten</b> shelf with selectable frequency (5/10/20 kHz). <b>Tube</b> adds gentle valve-style output saturation. Knob values 0–10 are not dB; 10 is roughly +14 dB on the low boost.</p>
+
+<h3 id="m-dyn">Dynamics</h3>
+<p>Three-band compressor with phase-aligned Linkwitz-Riley 4th-order crossovers (<b>Crossover 1/2</b>). Each band has Threshold, Ratio, Knee, Attack, Release and make-up Gain, plus a downward <b>expander</b> (Expander Threshold/Ratio) to lower noise floors. <b>Stereo Link</b> 100 % compresses both channels equally (stable image); lower values react to each channel separately. <b>Mid/Side</b> processes mid and side independently. Gain-reduction meters show each band.</p>
+
+<h3 id="m-vcomp">Vintage Comp</h3>
+<p>An opto-style compressor: gentle, programme-dependent release made of a fast and a slow stage, so short peaks recover quickly while sustained compression releases slowly. <b>Input</b> drives the detector, <b>Warmth</b> adds valve-style saturation, <b>Mix</b> gives parallel compression.</p>
+
+<h3 id="m-unlim">Unlimiter</h3>
+<p>Brings back transients on over-limited material by boosting peaks that stand out above the short-term level. <b>Amount</b> scales the effect, <b>Max Boost</b> is the largest boost applied to a peak, <b>Threshold</b> is how far a peak must stand above the body, and <b>Release</b> how fast the boost relaxes. <b>Compensate</b> gently lowers the body to keep loudness similar. Place it <em>first</em> and follow it with the Maximizer. Because the source's lost peaks cannot be recreated exactly, expect an improvement in punch and dynamics rather than a perfect reconstruction.</p>
+
+<h3 id="m-impact">Impact</h3>
+<p>Three-band attack/sustain shaper. Positive <b>Attack</b> adds snap to drums; negative softens them. <b>Sustain</b> raises or lowers the tail between hits. Use small values (±1–3 dB) on a full mix.</p>
+
+<h3 id="m-lef">Low End Focus</h3>
+<p>Works on everything below <b>Focus Frequency</b>: <b>Punch</b> accentuates kicks and bass attacks, <b>Sustain</b> trims or extends their tails, <b>Contrast</b> tightens the low end by adding level-dependent compression.</p>
+
+<h3 id="m-bass">Bass Control</h3>
+<p>Splits the low end into <b>Sub</b> (below the Sub/Bass split), <b>Bass</b> (to the Bass/Low-Mid split) and the rest, and gives you separate <b>Gain</b>, <b>Mono</b> (fold to centre) and — for the bass — <b>Punch</b> and <b>Tighten</b>. The three level bars show where your energy sits; <b>Auto Balance</b> slowly adjusts the sub level to reach the <b>Sub-Bass Target</b> (the dB difference between sub and bass). A sub region folded to mono (100 %) is the single easiest way to improve translation to club systems and vinyl.</p>
+
+<h3 id="m-exc">Exciter</h3>
+<p>Four-band harmonic exciter with anti-aliased (first-order ADAA) saturation. <b>Mode</b>: <em>Tape</em> (odd harmonics, smooth), <em>Tube</em> and <em>Warm</em> (even harmonics), <em>Retro</em> (brighter, edgier). Each band has <b>Drive</b> (how hard the band is pushed into the shaper), <b>Amount</b> (blend of saturated signal) and <b>Gain</b>. A little Amount on the top band is a classic "air" tool; keep low bands subtle.</p>
+
+<h3 id="m-tape">Vintage Tape</h3>
+<p>Tape machine emulation: <b>Drive</b> into saturation, selectable <b>Speed</b> (7.5, 15, 30 ips; lower speeds mean a bigger head bump and darker top), <b>Saturation</b>, <b>Wow &amp; Flutter</b> (pitch modulation), <b>Hiss</b> and <b>Age</b> (progressive high-frequency loss). Adds a fixed 16-sample latency.</p>
+
+<h3 id="m-img">Imager</h3>
+<p>Four-band stereo width (0 % = mono, 100 % = unchanged, 200 % = double). <b>Stereoize</b> adds a mono-compatible decorrelated component to widen narrow sources. <b>Balance</b> shifts left/right. In the Imager panel, <b>Width</b> and <b>Corr.</b> show the current stereo width and phase correlation (negative = phase problems).</p>
+
+<h3 id="m-delay">Delay</h3>
+<p>Stereo delay with independent left/right times, <b>Feedback</b>, <b>Ping-Pong</b> and low/high cuts on the feedback path. Use sparingly in mastering — a short, filtered slap can add depth to sparse material.</p>
+
+<h3 id="m-rev">Reverb</h3>
+<p>A compact algorithmic (comb + all-pass) reverb: <b>Room Size</b>, <b>Damping</b>, <b>Width</b>, <b>Pre-Delay</b>, <b>Low Cut</b> and <b>Mix</b>. In mastering, 3–8 % of a small room can "glue" dry stems.</p>
+
+<h3 id="m-stem">Stem EQ</h3>
+<p>Estimates four stems — <b>Bass, Drums, Vocals, Other</b> — and lets you change the level (±12 dB) and tone (±6 dB tilt) of each without opening the mix. Stems are estimated from harmonic-vs-percussive structure and stereo-centre energy, so separation is approximate. <b>Focus</b> sets how hard the masks are (higher = more separation, more artefacts). <b>Solo</b> lets you audition what the algorithm believes each stem to be. For best results keep moves under ±4 dB.</p>
+
+<h3 id="m-vlim">Vintage Limiter</h3>
+<p>A fast, coloured peak limiter with selectable <b>Input</b> drive, <b>Attack</b>, <b>Release</b> and <b>Character</b> (saturation). Use it as a tone-shaping stage <em>before</em> the Maximizer; it does not guarantee the ceiling.</p>
+
+<h3 id="m-max">Maximizer</h3>
+<p>The final lookahead limiter. <b>Gain</b> pushes the signal into the <b>Ceiling</b>; the ceiling is a <em>true-peak</em> ceiling when <b>True Peak</b> is on (inter-sample peaks are estimated with 4× interpolation). <b>Release</b> sets the recovery time, <b>Character</b> blends in soft saturation before the limiter, and <b>Stereo Independence</b> lets channels limit separately (0 % = fully linked, best image).</p>
+<table class="t">
+<tr><th>Algorithm</th><th>Lookahead</th><th>Behaviour</th></tr>
+<tr><td>AZ-1 Clean</td><td>≈1 ms</td><td>Transparent, fixed release. Best for dynamic music and light limiting.</td></tr>
+<tr><td>AZ-2 Balanced</td><td>≈2 ms</td><td>Programme-dependent release — fast for shallow reduction, slower for deep. The all-rounder.</td></tr>
+<tr><td>AZ-3 Multiband</td><td>≈2.5 ms</td><td>Three independently limited bands plus a safety limiter; prevents bass from pumping the highs.</td></tr>
+<tr><td>AZ-4 Aggressive</td><td>≈3 ms</td><td>Four bands, saturating pre-stage; the loudest option.</td></tr>
+<tr><td>AZ-5 Adaptive</td><td>≈2 ms</td><td>Release adapts to the crest factor of the music (peaky material gets a faster release).</td></tr>
+</table>
+<p>A final 0.8 ms safety stage is always active so the ceiling holds in every mode. The <b>GR</b> meter shows the current gain reduction. As a rule of thumb, more than 6–8 dB of reduction on a full mix will start to sound dense; the Master Assistant warns you above 8 dB.</p>
+
+<h3 id="dither">Dither</h3>
+<p>Choose <b>16 bit</b>, <b>20 bit</b> or <b>24 bit</b> in the top bar to add noise-shaped TPDF dither to the final output — <em>only</em> when you render to that bit depth, and only once, at the very end of the chain. Leave it <b>Off</b> when rendering 32-bit float.</p>
+
+<h2 id="assistant">7. Master Assistant</h2>
+<p>Open it with <b>🎛 Master Assistant</b>.</p>
+<ol>
+<li>Choose a <b>Genre</b> (it selects the target tonal balance, limiter algorithm, compression style and minimum stereo width) and a <b>Target</b>: Streaming −14 LUFS / −1 dBTP, Loud −9 LUFS / −0.3 dBTP, Broadcast −23 LUFS / −1 dBTP, or Custom.</li>
+<li>Under <em>Modules the assistant may adjust</em> tick which modules it is allowed to touch — your own flow. Modules you leave unticked are never changed.</li>
+<li>Click <b>Start listening</b> and play the loudest, most representative section (a chorus). After at least five seconds click <b>Analyze now</b>; 20–30 seconds gives better results.</li>
+<li>Read the <b>Measurements</b> (loudness, LRA, true peak, crest factor, width, correlation, sub-versus-bass balance) and the <b>Suggestions</b>. Every suggestion has a plain-language reason.</li>
+<li>Click <b>✔ Apply suggestions</b>. The assistant sets only the parameters it mentions; you can then edit anything. <b>↶ Undo</b> restores the state from before you applied.</li>
+</ol>
+<p>The assistant measures the signal arriving at the plug-in input, so it analyses your <em>unprocessed</em> mix. It suggests: corrective EQ bands (up to five, ±4 dB maximum), a 24 Hz high-pass, gentle dynamics when the crest factor is high, Unlimiter when the mix looks over-limited, sub mono-folding and sub trims, widening or narrowing of the highs, top-end excitement for dull mixes, the Stabilizer for large tonal deviations, and finally Maximizer gain, ceiling and algorithm to reach the loudness target.</p>
+<div class="warn"><b>It guides, you decide.</b> Always check the result by ear, at matched loudness, against a reference track.</div>
+
+<h2 id="presets">8. Presets</h2>
+<p>Pick presets from the menu in the top bar or step through them with ◀ ▶. A preset is a <em>complete</em> snapshot: applying it first returns every parameter to its default (the Bypass switch and your chain order are left alone) and then sets the preset's values. Preset changes are sent through the host, so they are undoable in REAPER and recordable as automation. Hover a preset name for its description.</p>
+<h3>User presets</h3>
+<p><b>💾 Save</b> stores the current settings as a <code>.azpreset</code> file (readable JSON) under the "User" category:</p>
+<ul>
+<li>Windows: <code>%APPDATA%\AirZone26\Presets</code></li>
+<li>macOS: <code>~/Library/Application Support/AirZone26/Presets</code></li>
+</ul>
+<p>Copy those files to share presets. REAPER's own FX preset system and project states also store the full plug-in state.</p>
+<h3>Factory preset catalogue ({{PRESET_COUNT}} presets)</h3>
+<!--PRESETS-->
+
+<h2 id="metering">9. Metering</h2>
+<table class="t">
+<tr><th>Meter</th><th>Meaning</th></tr>
+<tr><td>Momentary / Short / Integrated</td><td>LUFS per ITU-R BS.1770-4 K-weighting: 400 ms window, 3 s window, and gated whole-programme value (absolute gate −70 LUFS, relative gate −10 LU). Integrated needs a few seconds of audio; press <b>Reset meters</b> before measuring a new pass.</td></tr>
+<tr><td>True pk</td><td>Highest inter-sample (true) peak at the output in dBTP. Turns red when it exceeds the Maximizer ceiling.</td></tr>
+<tr><td>Corr.</td><td>Stereo phase correlation, −1 … +1. Stay above 0 for mono-compatible material.</td></tr>
+<tr><td>LRA</td><td>Loudness range (EBU R128 method, 10th–95th percentile of gated short-term loudness).</td></tr>
+<tr><td>In</td><td>Integrated loudness of the plug-in input, handy for judging how much the chain added.</td></tr>
+<tr><td>GR meters</td><td>Gain reduction in dB (Maximizer, Dynamics bands, Vintage Comp).</td></tr>
+</table>
+
+<h2 id="workflows">10. Mastering workflows</h2>
+<h3>A. Clean loudness for streaming</h3>
+<ol><li>Load <b>Streaming −14 LUFS Safe</b>.</li><li>Play the loudest chorus; raise the Maximizer <b>Gain</b> until Integrated reads about −14 LUFS.</li><li>Check True pk stays below −1 dBTP.</li></ol>
+<h3>B. Competitive loud master</h3>
+<ol><li>Start from a genre preset (e.g. <b>Pop Loud</b> or <b>EDM Club Loud</b>).</li><li>Fix tone first (EQ, Dynamic EQ), then control dynamics, then raise Gain.</li><li>If the mix is already crushed, enable the <b>Unlimiter</b> before pushing further.</li></ol>
+<h3>C. Matching a reference</h3>
+<ol><li>Learn Source on your mix, Reference on the reference track.</li><li>Enable Match EQ at 50–80 % Amount; enable Stabilizer with "Use Reference" for slow tonal drift correction.</li><li>Compare at matched loudness.</li></ol>
+<h3>D. Fixing a lopsided mix without stems</h3>
+<ol><li>Open <b>Stem EQ</b>, solo each stem to hear what it grabs.</li><li>Make small moves (±2–3 dB). Use the Tone control to brighten or darken a single stem.</li></ol>
+<h3>E. Mono and vinyl safety</h3>
+<ol><li>Bass Control: Sub Mono 100 %, Sub/Bass split 100–150 Hz.</li><li>Imager: reduce low-band width; watch Corr. stay positive.</li></ol>
+
+<h2 id="latency">11. Latency &amp; rendering</h2>
+<table class="t">
+<tr><th>Source</th><th>Latency</th></tr>
+<tr><td>FFT group (any of Stem EQ, Match EQ, Stabilizer, Spectral Shaper enabled)</td><td>2048 samples (46 ms at 44.1 kHz, 43 ms at 48 kHz)</td></tr>
+<tr><td>Maximizer</td><td>lookahead + 0.8 ms safety stage (about 2–4 ms depending on algorithm)</td></tr>
+<tr><td>Vintage Tape</td><td>16 samples</td></tr>
+<tr><td>All other modules</td><td>0</td></tr>
+</table>
+<p>The total is reported to REAPER automatically (plug-in delay compensation), so playback and rendering stay aligned. Enabling or disabling a latency-adding module while playing makes REAPER re-compute delay compensation, which can cause a brief glitch — switch such modules before you play, not during a take. Bypass is latency-compensated.</p>
+<p>Rendering: all processing is deterministic. Match EQ / Master Assistant <em>learning</em> needs real-time playback; once learned, offline (faster-than-real-time) renders use the stored curve. Choose Dither only when your render bit depth is below 32-bit float.</p>
+<p>Sample rates from 44.1 kHz to 192 kHz are supported.</p>
+
+<h2 id="build">12. Building from source</h2>
+<p>Requirements: Rust (stable, 1.80 or newer). On Linux also the X11/GL development packages used by the GUI library.</p>
+<pre><code>git clone https://github.com/n8n5gy4cs9-cmd/airzone26
+cd airzone26
+cargo test --workspace            # DSP, preset and mapping tests
+cargo xtask bundle airzone26 --release
+# → target/bundled/AirZone 26.vst3  and  AirZone 26.clap</code></pre>
+<ul>
+<li><b>Windows (MSVC):</b> install "Build Tools for Visual Studio" with the C++ workload, then run the commands above.</li>
+<li><b>macOS (Apple Silicon):</b> install Xcode command line tools; the default target is native <code>aarch64-apple-darwin</code>. For a universal binary use <code>cargo xtask bundle-universal airzone26 --release</code> after <code>rustup target add x86_64-apple-darwin</code>.</li>
+<li><b>Continuous integration:</b> <code>.github/workflows/build.yml</code> runs the tests and builds both platforms; the ZIPs appear as workflow artifacts and on tagged releases (<code>v*</code>).</li>
+<li><b>Regenerate this manual:</b> <code>cargo run -p airzone26 --example gen_docs</code> (fills the preset catalogue and parameter reference from the code).</li>
+</ul>
+<h3>Project layout</h3>
+<table class="t">
+<tr><td><code>crates/airzone-dsp</code></td><td>Plug-in-independent DSP engine and unit tests (EQ, dynamics, limiter, STFT modules, meters, assistant).</td></tr>
+<tr><td><code>crates/airzone26</code></td><td>NIH-plug wrapper: parameters, engine mapping, presets, egui editor.</td></tr>
+<tr><td><code>xtask</code></td><td>Bundler for VST3/CLAP.</td></tr>
+<tr><td><code>TASKS.md</code></td><td>Done / not-done task tracker.</td></tr>
+</table>
+
+<h2 id="trouble">13. Troubleshooting</h2>
+<table class="t">
+<tr><th>Problem</th><th>Solution</th></tr>
+<tr><td>REAPER does not list the plug-in</td><td>Re-scan with <em>Clear cache and re-scan</em>. On macOS make sure REAPER is the Apple Silicon build and the quarantine flag was removed. On Windows check the file was unblocked.</td></tr>
+<tr><td>Plug-in window is blank or garbled</td><td>Update your graphics driver (the editor uses OpenGL 3.2+). Try floating the FX window.</td></tr>
+<tr><td>Audio is delayed or out of sync with bypass</td><td>Make sure REAPER's plug-in delay compensation is enabled (it is by default).</td></tr>
+<tr><td>Click when toggling a module</td><td>Toggle latency-adding modules while stopped; level changes are otherwise smoothed.</td></tr>
+<tr><td>Output is quieter than input</td><td>The chain does not auto-match loudness. Raise the Maximizer Gain or the Output gain. Compare with <em>In</em> LUFS at the bottom.</td></tr>
+<tr><td>Stem EQ sounds watery</td><td>Lower the stem gains to ±3 dB or less and reduce Focus.</td></tr>
+<tr><td>Integrated LUFS shows −∞</td><td>Not enough audio yet; play a few seconds, or press <em>Reset meters</em> and restart playback.</td></tr>
+<tr><td>Reference WAV fails to load</td><td>Use an uncompressed PCM or float WAV at least half a second long and paste the full path. MP3/FLAC are not read; convert to WAV first.</td></tr>
+<tr><td>High CPU</td><td>Disable modules you do not need; the FFT group and AZ-3/AZ-4 limiter modes are the most expensive. Increase REAPER's buffer size on the master track (or enable <em>Anticipative FX</em>).</td></tr>
+</table>
+
+<h2 id="reference">14. Parameter reference</h2>
+<p>All {{PARAM_COUNT}} parameters. <em>ID</em> is the stable identifier stored in projects and preset files. Percentages are shown as 0–100 in the interface.</p>
+<!--PARAMS-->
+
+<h2 id="legal">15. Legal &amp; credits</h2>
+<p>AirZone 26 is free software released under the GNU General Public License v3 or later. The VST3 interface is used under its open-source licence. Built with <a href="https://github.com/robbert-vdh/nih-plug">NIH-plug</a>, <a href="https://github.com/emilk/egui">egui</a>, RealFFT and Hound.</p>
+<p>VST is a registered trademark of Steinberg Media Technologies GmbH. All other product names mentioned (including those of other mastering suites) are trademarks of their respective owners and are used for identification only; AirZone 26 is not affiliated with or endorsed by them, and contains none of their code or proprietary algorithms.</p>
+<p style="color:var(--dim);margin-top:48px">AirZone 26 v{{VERSION}} · manual generated from the source tree.</p>
+</main>
+</div>
+</body>
+</html>
