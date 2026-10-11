@@ -19,3 +19,9 @@ strip = "symbols"
 inherits = "release"
 debug = true
 strip = "none"
+
+[profile.test]
+opt-level = 2
+
+[profile.dev]
+opt-level = 1

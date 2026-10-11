@@ -1,281 +1,344 @@
 //! Copies parameter values into the DSP engine once per block.
+//!
+//! The mapping reads plain values by parameter id from a [`Values`] snapshot, so exactly the same
+//! code path serves the real plugin and the headless preset tests.
+
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use airzone_dsp::biquad::FilterKind;
-use airzone_dsp::chain::{sanitize_order, Engine, ModuleId};
+use airzone_dsp::chain::{sanitize_order, Engine};
 use airzone_dsp::eq::Placement;
 use airzone_dsp::maximizer::LimiterMode;
 use airzone_dsp::saturation::ShaperKind;
 use airzone_dsp::vintage::TapeSpeed;
+use nih_plug::prelude::*;
 
-use crate::params::*;
+use crate::params::AirZoneParams;
+use crate::presets::Preset;
 
-fn kind(k: KindP) -> FilterKind {
-    match k {
-        KindP::Bell => FilterKind::Bell,
-        KindP::LowShelf => FilterKind::LowShelf,
-        KindP::HighShelf => FilterKind::HighShelf,
-        KindP::HighPass => FilterKind::HighPass,
-        KindP::LowPass => FilterKind::LowPass,
-        KindP::Notch => FilterKind::Notch,
+/// Snapshot of every parameter's plain value, addressable by id.
+pub struct Values {
+    _params: Arc<AirZoneParams>,
+    idx: HashMap<String, usize>,
+    ptrs: Vec<ParamPtr>,
+    pub vals: Vec<f32>,
+}
+
+// ParamPtr is a raw pointer into `_params`, which we keep alive.
+unsafe impl Send for Values {}
+
+impl Values {
+    pub fn new(params: Arc<AirZoneParams>) -> Self {
+        let map = params.param_map();
+        let mut idx = HashMap::new();
+        let mut ptrs = Vec::new();
+        let mut vals = Vec::new();
+        for (i, (id, ptr, _)) in map.into_iter().enumerate() {
+            idx.insert(id, i);
+            vals.push(unsafe { ptr.default_plain_value() });
+            ptrs.push(ptr);
+        }
+        Self { _params: params, idx, ptrs, vals }
+    }
+
+    /// Re-read live values from the parameters (audio thread safe: no allocation).
+    pub fn refresh(&mut self) {
+        for (v, p) in self.vals.iter_mut().zip(self.ptrs.iter()) {
+            *v = unsafe { p.modulated_plain_value() };
+        }
+    }
+
+    /// Start from defaults and overlay a preset (values are clamped to each parameter's range).
+    pub fn from_preset(params: Arc<AirZoneParams>, preset: &Preset) -> Self {
+        let mut v = Self::new(params);
+        for (id, plain) in &preset.values {
+            if let Some(&i) = v.idx.get(id) {
+                let n = unsafe { v.ptrs[i].preview_normalized(*plain) }.clamp(0.0, 1.0);
+                v.vals[i] = unsafe { v.ptrs[i].preview_plain(n) };
+            }
+        }
+        v
+    }
+
+    #[inline]
+    pub fn f(&self, id: &str) -> f32 {
+        match self.idx.get(id) {
+            Some(&i) => self.vals[i],
+            None => {
+                debug_assert!(false, "unknown parameter id {id}");
+                0.0
+            }
+        }
+    }
+    #[inline]
+    pub fn b(&self, id: &str) -> bool {
+        self.f(id) > 0.5
+    }
+    #[inline]
+    pub fn i(&self, id: &str) -> usize {
+        self.f(id).round().max(0.0) as usize
     }
 }
 
-fn slope_order(s: SlopeP) -> usize {
-    match s {
-        SlopeP::S12 => 2,
-        SlopeP::S24 => 4,
-        SlopeP::S36 => 6,
-        SlopeP::S48 => 8,
+fn kind(i: usize) -> FilterKind {
+    match i {
+        0 => FilterKind::Bell,
+        1 => FilterKind::LowShelf,
+        2 => FilterKind::HighShelf,
+        3 => FilterKind::HighPass,
+        4 => FilterKind::LowPass,
+        _ => FilterKind::Notch,
     }
 }
 
-fn place(p: PlaceP) -> Placement {
-    match p {
-        PlaceP::Stereo => Placement::Stereo,
-        PlaceP::Mid => Placement::Mid,
-        PlaceP::Side => Placement::Side,
-        PlaceP::Left => Placement::Left,
-        PlaceP::Right => Placement::Right,
+fn place(i: usize) -> Placement {
+    match i {
+        0 => Placement::Stereo,
+        1 => Placement::Mid,
+        2 => Placement::Side,
+        3 => Placement::Left,
+        _ => Placement::Right,
     }
 }
 
-pub fn limiter_mode(m: LimiterP) -> LimiterMode {
-    match m {
-        LimiterP::Clean => LimiterMode::Clean,
-        LimiterP::Balanced => LimiterMode::Balanced,
-        LimiterP::Multiband => LimiterMode::Multiband,
-        LimiterP::Aggressive => LimiterMode::Aggressive,
-        LimiterP::Adaptive => LimiterMode::Adaptive,
-    }
+pub fn limiter_mode(i: usize) -> LimiterMode {
+    LimiterMode::ALL[i.min(4)]
 }
 
-pub fn apply(p: &AirZoneParams, e: &mut Engine) {
-    e.bypass = p.bypass.value();
-    e.input_gain_db = p.input_gain.value();
-    e.output_gain_db = p.output_gain.value();
-    e.dither.bits = match p.dither.value() {
-        DitherP::Off => 0,
-        DitherP::B16 => 16,
-        DitherP::B20 => 20,
-        DitherP::B24 => 24,
-    };
-    for (i, s) in p.on.by_index().iter().enumerate() {
-        e.enabled[i] = s.value();
+const SWITCH_IDS: [&str; 20] = [
+    "on_unlimiter",
+    "on_stem",
+    "on_match",
+    "on_eq",
+    "on_dyneq",
+    "on_stab",
+    "on_shaper",
+    "on_bass",
+    "on_lef",
+    "on_dyn",
+    "on_vcomp",
+    "on_veq",
+    "on_vtape",
+    "on_exciter",
+    "on_impact",
+    "on_imager",
+    "on_delay",
+    "on_reverb",
+    "on_vlim",
+    "on_max",
+];
+
+pub fn apply(v: &Values, order: Option<&[u8]>, e: &mut Engine) {
+    e.bypass = v.b("bypass");
+    e.input_gain_db = v.f("in_gain");
+    e.output_gain_db = v.f("out_gain");
+    e.dither.bits = [0, 16, 20, 24][v.i("dither").min(3)];
+    for (i, id) in SWITCH_IDS.iter().enumerate() {
+        e.enabled[i] = v.b(id);
     }
-    if let Some(order) = p.order.try_read() {
-        e.order = sanitize_order(&order);
+    if let Some(o) = order {
+        e.order = sanitize_order(o);
     }
 
-    let u = &p.unlimiter;
-    e.unlimiter.amount = u.amount.value();
-    e.unlimiter.max_boost_db = u.max_boost.value();
-    e.unlimiter.threshold_db = u.threshold.value();
-    e.unlimiter.release_ms = u.release.value();
-    e.unlimiter.compensate = u.compensate.value();
+    e.unlimiter.amount = v.f("un_amount");
+    e.unlimiter.max_boost_db = v.f("un_boost");
+    e.unlimiter.threshold_db = v.f("un_thresh");
+    e.unlimiter.release_ms = v.f("un_release");
+    e.unlimiter.compensate = v.b("un_comp");
 
-    let s = &p.stem;
     let st = &mut e.hub.stem;
-    st.stems[0].gain_db = s.bass_gain.value();
-    st.stems[1].gain_db = s.drums_gain.value();
-    st.stems[2].gain_db = s.vocals_gain.value();
-    st.stems[3].gain_db = s.other_gain.value();
-    st.stems[0].tilt_db = s.bass_tilt.value();
-    st.stems[1].tilt_db = s.drums_tilt.value();
-    st.stems[2].tilt_db = s.vocals_tilt.value();
-    st.stems[3].tilt_db = s.other_tilt.value();
-    st.focus = s.focus.value();
-    st.solo = match s.solo.value() {
-        SoloP::Off => None,
-        SoloP::Bass => Some(0),
-        SoloP::Drums => Some(1),
-        SoloP::Vocals => Some(2),
-        SoloP::Other => Some(3),
+    st.stems[0].gain_db = v.f("st_g0");
+    st.stems[1].gain_db = v.f("st_g1");
+    st.stems[2].gain_db = v.f("st_g2");
+    st.stems[3].gain_db = v.f("st_g3");
+    st.stems[0].tilt_db = v.f("st_t0");
+    st.stems[1].tilt_db = v.f("st_t1");
+    st.stems[2].tilt_db = v.f("st_t2");
+    st.stems[3].tilt_db = v.f("st_t3");
+    st.focus = v.f("st_focus");
+    st.solo = match v.i("st_solo") {
+        0 => None,
+        n => Some(n - 1),
     };
 
-    let m = &p.match_eq;
     let me = &mut e.hub.match_eq;
-    if me.amount != m.amount.value() || me.smoothing != m.smoothing.value() || me.max_gain_db != m.max_gain.value() {
+    if me.amount != v.f("mq_amount") || me.smoothing != v.f("mq_smooth") || me.max_gain_db != v.f("mq_maxgain") {
         me.mark_dirty();
     }
-    me.amount = m.amount.value();
-    me.smoothing = m.smoothing.value();
-    me.max_gain_db = m.max_gain.value();
+    me.amount = v.f("mq_amount");
+    me.smoothing = v.f("mq_smooth");
+    me.max_gain_db = v.f("mq_maxgain");
 
-    for (b, bp) in e.eq.bands.iter_mut().zip(p.eq.bands.iter()) {
-        b.enabled = bp.on.value();
-        b.kind = kind(bp.kind.value());
-        b.freq = bp.freq.value();
-        b.gain_db = bp.gain.value();
-        b.q = bp.q.value();
-        b.order = slope_order(bp.slope.value());
-        b.placement = place(bp.place.value());
+    for (i, b) in e.eq.bands.iter_mut().enumerate() {
+        let n = i + 1;
+        b.enabled = v.b(&format!("eq_on_{n}"));
+        b.kind = kind(v.i(&format!("eq_kind_{n}")));
+        b.freq = v.f(&format!("eq_freq_{n}"));
+        b.gain_db = v.f(&format!("eq_gain_{n}"));
+        b.q = v.f(&format!("eq_q_{n}"));
+        b.order = 2 + 2 * v.i(&format!("eq_slope_{n}")).min(3);
+        b.placement = place(v.i(&format!("eq_place_{n}")));
     }
-    for (b, bp) in e.dyneq.bands.iter_mut().zip(p.dyneq.bands.iter()) {
-        b.enabled = bp.on.value();
-        b.freq = bp.freq.value();
-        b.q = bp.q.value();
-        b.gain_db = bp.gain.value();
-        b.threshold_db = bp.threshold.value();
-        b.range_db = bp.range.value();
-        b.ratio = bp.ratio.value();
-        b.attack_ms = bp.attack.value();
-        b.release_ms = bp.release.value();
-    }
-
-    let sb = &p.stab;
-    let st = &mut e.hub.stabilizer;
-    st.amount = sb.amount.value();
-    st.range_db = sb.range.value();
-    st.slope_db_oct = sb.slope.value();
-    st.speed = sb.speed.value();
-    st.use_reference = sb.use_ref.value();
-
-    let ss = &p.shaper;
-    let sh = &mut e.hub.shaper;
-    sh.depth = ss.depth.value();
-    sh.threshold_db = ss.threshold.value();
-    sh.width = ss.width.value();
-    sh.low_hz = ss.low.value();
-    sh.high_hz = ss.high.value();
-    sh.tilt_db_oct = ss.tilt.value();
-    sh.delta = ss.delta.value();
-
-    let b = &p.bass;
-    e.bass.sub_freq = b.sub_freq.value();
-    e.bass.bass_freq = b.bass_freq.value();
-    e.bass.sub_gain_db = b.sub_gain.value();
-    e.bass.bass_gain_db = b.bass_gain.value();
-    e.bass.sub_mono = b.sub_mono.value();
-    e.bass.bass_mono = b.bass_mono.value();
-    e.bass.punch_db = b.punch.value();
-    e.bass.tighten = b.tighten.value();
-    e.bass.auto_balance = b.auto_balance.value();
-    e.bass.target_ratio_db = b.target_ratio.value();
-    e.bass.mix = b.mix.value();
-
-    let l = &p.lef;
-    e.lef.freq = l.freq.value();
-    e.lef.punch_db = l.punch.value();
-    e.lef.sustain_db = l.sustain.value();
-    e.lef.contrast = l.contrast.value();
-    e.lef.mix = l.mix.value();
-
-    let d = &p.dynamics;
-    e.dynamics.crossovers = [d.xo1.value(), d.xo2.value()];
-    e.dynamics.link = d.link.value();
-    e.dynamics.mid_side = d.mid_side.value();
-    e.dynamics.output_db = d.output.value();
-    e.dynamics.mix = d.mix.value();
-    for (b, bp) in e.dynamics.bands.iter_mut().zip(d.bands.iter()) {
-        b.enabled = bp.on.value();
-        b.threshold_db = bp.threshold.value();
-        b.ratio = bp.ratio.value();
-        b.knee_db = bp.knee.value();
-        b.attack_ms = bp.attack.value();
-        b.release_ms = bp.release.value();
-        b.gain_db = bp.gain.value();
-        b.expand_threshold_db = bp.exp_threshold.value();
-        b.expand_ratio = bp.exp_ratio.value();
+    for (i, b) in e.dyneq.bands.iter_mut().enumerate() {
+        let n = i + 1;
+        b.enabled = v.b(&format!("dq_dq_on_{n}"));
+        b.freq = v.f(&format!("dq_dq_freq_{n}"));
+        b.q = v.f(&format!("dq_dq_q_{n}"));
+        b.gain_db = v.f(&format!("dq_dq_gain_{n}"));
+        b.threshold_db = v.f(&format!("dq_dq_thresh_{n}"));
+        b.range_db = v.f(&format!("dq_dq_range_{n}"));
+        b.ratio = v.f(&format!("dq_dq_ratio_{n}"));
+        b.attack_ms = v.f(&format!("dq_dq_att_{n}"));
+        b.release_ms = v.f(&format!("dq_dq_rel_{n}"));
     }
 
-    let v = &p.vcomp;
-    e.vcomp.input_db = v.input.value();
-    e.vcomp.threshold_db = v.threshold.value();
-    e.vcomp.ratio = v.ratio.value();
-    e.vcomp.attack_ms = v.attack.value();
-    e.vcomp.release_ms = v.release.value();
-    e.vcomp.makeup_db = v.makeup.value();
-    e.vcomp.warmth = v.warmth.value();
-    e.vcomp.mix = v.mix.value();
+    let s = &mut e.hub.stabilizer;
+    s.amount = v.f("sb_amount");
+    s.range_db = v.f("sb_range");
+    s.slope_db_oct = v.f("sb_slope");
+    s.speed = v.f("sb_speed");
+    s.use_reference = v.b("sb_useref");
 
-    let v = &p.veq;
-    e.veq.low_freq = v.low_freq.value() as usize;
-    e.veq.low_boost = v.low_boost.value();
-    e.veq.low_atten = v.low_atten.value();
-    e.veq.high_freq = v.high_freq.value() as usize;
-    e.veq.high_boost = v.high_boost.value();
-    e.veq.bandwidth = v.bandwidth.value();
-    e.veq.atten_freq = v.atten_freq.value() as usize;
-    e.veq.high_atten = v.high_atten.value();
-    e.veq.tube = v.tube.value();
+    let s = &mut e.hub.shaper;
+    s.depth = v.f("ss_depth");
+    s.threshold_db = v.f("ss_thresh");
+    s.width = v.f("ss_width");
+    s.low_hz = v.f("ss_low");
+    s.high_hz = v.f("ss_high");
+    s.tilt_db_oct = v.f("ss_tilt");
+    s.delta = v.b("ss_delta");
 
-    let v = &p.vtape;
-    e.vtape.drive_db = v.drive.value();
-    e.vtape.speed = match v.speed.value() {
-        TapeSpeedP::Ips7 => TapeSpeed::Ips7_5,
-        TapeSpeedP::Ips15 => TapeSpeed::Ips15,
-        TapeSpeedP::Ips30 => TapeSpeed::Ips30,
-    };
-    e.vtape.saturation = v.saturation.value();
-    e.vtape.wow_flutter = v.wow.value();
-    e.vtape.noise = v.noise.value();
-    e.vtape.age = v.age.value();
-    e.vtape.output_db = v.output.value();
+    e.bass.sub_freq = v.f("bc_subf");
+    e.bass.bass_freq = v.f("bc_bassf");
+    e.bass.sub_gain_db = v.f("bc_subg");
+    e.bass.bass_gain_db = v.f("bc_bassg");
+    e.bass.sub_mono = v.f("bc_submono");
+    e.bass.bass_mono = v.f("bc_bassmono");
+    e.bass.punch_db = v.f("bc_punch");
+    e.bass.tighten = v.f("bc_tight");
+    e.bass.auto_balance = v.b("bc_auto");
+    e.bass.target_ratio_db = v.f("bc_ratio");
+    e.bass.mix = v.f("bc_mix");
 
-    let x = &p.exciter;
-    e.exciter.crossovers = [x.xo1.value(), x.xo2.value(), x.xo3.value()];
-    e.exciter.kind = match x.mode.value() {
-        SatModeP::Tape => ShaperKind::Tape,
-        SatModeP::Tube => ShaperKind::Tube,
-        SatModeP::Warm => ShaperKind::Warm,
-        SatModeP::Retro => ShaperKind::Retro,
-    };
-    e.exciter.mix = x.mix.value();
-    for (b, bp) in e.exciter.bands.iter_mut().zip(x.bands.iter()) {
-        b.enabled = bp.on.value();
-        b.drive_db = bp.drive.value();
-        b.amount = bp.amount.value();
-        b.gain_db = bp.gain.value();
+    e.lef.freq = v.f("lf_freq");
+    e.lef.punch_db = v.f("lf_punch");
+    e.lef.sustain_db = v.f("lf_sustain");
+    e.lef.contrast = v.f("lf_contrast");
+    e.lef.mix = v.f("lf_mix");
+
+    e.dynamics.crossovers = [v.f("dy_xo1"), v.f("dy_xo2")];
+    e.dynamics.link = v.f("dy_link");
+    e.dynamics.mid_side = v.b("dy_ms");
+    e.dynamics.output_db = v.f("dy_out");
+    e.dynamics.mix = v.f("dy_mix");
+    for (i, b) in e.dynamics.bands.iter_mut().enumerate() {
+        let n = i + 1;
+        b.enabled = v.b(&format!("dy_dy_on_{n}"));
+        b.threshold_db = v.f(&format!("dy_dy_thresh_{n}"));
+        b.ratio = v.f(&format!("dy_dy_ratio_{n}"));
+        b.knee_db = v.f(&format!("dy_dy_knee_{n}"));
+        b.attack_ms = v.f(&format!("dy_dy_att_{n}"));
+        b.release_ms = v.f(&format!("dy_dy_rel_{n}"));
+        b.gain_db = v.f(&format!("dy_dy_gain_{n}"));
+        b.expand_threshold_db = v.f(&format!("dy_dy_expth_{n}"));
+        b.expand_ratio = v.f(&format!("dy_dy_exprat_{n}"));
     }
 
-    let i = &p.impact;
-    e.impact.crossovers = [i.xo1.value(), i.xo2.value()];
-    e.impact.mix = i.mix.value();
-    for (b, bp) in e.impact.bands.iter_mut().zip(i.bands.iter()) {
-        b.attack_db = bp.attack.value();
-        b.sustain_db = bp.sustain.value();
+    e.vcomp.input_db = v.f("vc_in");
+    e.vcomp.threshold_db = v.f("vc_thresh");
+    e.vcomp.ratio = v.f("vc_ratio");
+    e.vcomp.attack_ms = v.f("vc_att");
+    e.vcomp.release_ms = v.f("vc_rel");
+    e.vcomp.makeup_db = v.f("vc_makeup");
+    e.vcomp.warmth = v.f("vc_warm");
+    e.vcomp.mix = v.f("vc_mix");
+
+    e.veq.low_freq = v.i("ve_lf");
+    e.veq.low_boost = v.f("ve_lb");
+    e.veq.low_atten = v.f("ve_la");
+    e.veq.high_freq = v.i("ve_hf");
+    e.veq.high_boost = v.f("ve_hb");
+    e.veq.bandwidth = v.f("ve_bw");
+    e.veq.atten_freq = v.i("ve_af");
+    e.veq.high_atten = v.f("ve_ha");
+    e.veq.tube = v.f("ve_tube");
+
+    e.vtape.drive_db = v.f("vt_drive");
+    e.vtape.speed = [TapeSpeed::Ips7_5, TapeSpeed::Ips15, TapeSpeed::Ips30][v.i("vt_speed").min(2)];
+    e.vtape.saturation = v.f("vt_sat");
+    e.vtape.wow_flutter = v.f("vt_wow");
+    e.vtape.noise = v.f("vt_noise");
+    e.vtape.age = v.f("vt_age");
+    e.vtape.output_db = v.f("vt_out");
+
+    e.exciter.crossovers = [v.f("ex_xo1"), v.f("ex_xo2"), v.f("ex_xo3")];
+    e.exciter.kind = [ShaperKind::Tape, ShaperKind::Tube, ShaperKind::Warm, ShaperKind::Retro][v.i("ex_mode").min(3)];
+    e.exciter.mix = v.f("ex_mix");
+    for (i, b) in e.exciter.bands.iter_mut().enumerate() {
+        let n = i + 1;
+        b.enabled = v.b(&format!("ex_ex_on_{n}"));
+        b.drive_db = v.f(&format!("ex_ex_drive_{n}"));
+        b.amount = v.f(&format!("ex_ex_amount_{n}"));
+        b.gain_db = v.f(&format!("ex_ex_gain_{n}"));
     }
 
-    let g = &p.imager;
-    e.imager.crossovers = [g.xo1.value(), g.xo2.value(), g.xo3.value()];
-    e.imager.stereoize = g.stereoize.value();
-    e.imager.balance = g.balance.value();
-    for (w, bp) in e.imager.widths.iter_mut().zip(g.bands.iter()) {
-        *w = bp.width.value();
+    e.impact.crossovers = [v.f("im_xo1"), v.f("im_xo2")];
+    e.impact.mix = v.f("im_mix");
+    for (i, b) in e.impact.bands.iter_mut().enumerate() {
+        b.attack_db = v.f(&format!("im_im_att_{}", i + 1));
+        b.sustain_db = v.f(&format!("im_im_sus_{}", i + 1));
     }
 
-    let d = &p.delay;
-    e.delay.time_l_ms = d.time_l.value();
-    e.delay.time_r_ms = d.time_r.value();
-    e.delay.feedback = d.feedback.value();
-    e.delay.ping_pong = d.ping_pong.value();
-    e.delay.lowcut_hz = d.lowcut.value();
-    e.delay.highcut_hz = d.highcut.value();
-    e.delay.mix = d.mix.value();
+    e.imager.crossovers = [v.f("ig_xo1"), v.f("ig_xo2"), v.f("ig_xo3")];
+    e.imager.stereoize = v.f("ig_stz");
+    e.imager.balance = v.f("ig_bal");
+    for (i, w) in e.imager.widths.iter_mut().enumerate() {
+        *w = v.f(&format!("ig_ig_width_{}", i + 1));
+    }
 
-    let r = &p.reverb;
-    e.reverb.room_size = r.room.value();
-    e.reverb.damping = r.damping.value();
-    e.reverb.width = r.width.value();
-    e.reverb.predelay_ms = r.predelay.value();
-    e.reverb.lowcut_hz = r.lowcut.value();
-    e.reverb.mix = r.mix.value();
+    e.delay.time_l_ms = v.f("dl_tl");
+    e.delay.time_r_ms = v.f("dl_tr");
+    e.delay.feedback = v.f("dl_fb");
+    e.delay.ping_pong = v.b("dl_pp");
+    e.delay.lowcut_hz = v.f("dl_lc");
+    e.delay.highcut_hz = v.f("dl_hc");
+    e.delay.mix = v.f("dl_mix");
 
-    let v = &p.vlimiter;
-    e.vlimiter.input_db = v.input.value();
-    e.vlimiter.output_db = v.output.value();
-    e.vlimiter.attack_ms = v.attack.value();
-    e.vlimiter.release_ms = v.release.value();
-    e.vlimiter.character = v.character.value();
+    e.reverb.room_size = v.f("rv_room");
+    e.reverb.damping = v.f("rv_damp");
+    e.reverb.width = v.f("rv_width");
+    e.reverb.predelay_ms = v.f("rv_pre");
+    e.reverb.lowcut_hz = v.f("rv_lc");
+    e.reverb.mix = v.f("rv_mix");
 
-    let m = &p.max;
-    e.maximizer.mode = limiter_mode(m.mode.value());
-    e.maximizer.gain_db = m.gain.value();
-    e.maximizer.ceiling_db = m.ceiling.value();
-    e.maximizer.release_ms = m.release.value();
-    e.maximizer.character = m.character.value();
-    e.maximizer.independence = m.independence.value();
-    e.maximizer.true_peak = m.true_peak.value();
+    e.vlimiter.input_db = v.f("vl_in");
+    e.vlimiter.output_db = v.f("vl_out");
+    e.vlimiter.attack_ms = v.f("vl_att");
+    e.vlimiter.release_ms = v.f("vl_rel");
+    e.vlimiter.character = v.f("vl_char");
 
-    let _ = ModuleId::ALL;
+    e.maximizer.mode = limiter_mode(v.i("mx_mode"));
+    e.maximizer.gain_db = v.f("mx_gain");
+    e.maximizer.ceiling_db = v.f("mx_ceil");
+    e.maximizer.release_ms = v.f("mx_rel");
+    e.maximizer.character = v.f("mx_char");
+    e.maximizer.independence = v.f("mx_indep");
+    e.maximizer.true_peak = v.b("mx_tp");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_id_used_by_sync_exists() {
+        // debug_assert in Values::f panics on unknown ids
+        let params = Arc::new(AirZoneParams::default());
+        let v = Values::new(params);
+        let mut e = Engine::new(48000.0, 512);
+        apply(&v, None, &mut e);
+        // defaults must keep the chain neutral
+        assert!(e.enabled.iter().all(|x| !*x));
+    }
 }

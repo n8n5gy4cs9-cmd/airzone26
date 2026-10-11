@@ -21,6 +21,7 @@ use shared::*;
 
 pub struct AirZone {
     params: Arc<AirZoneParams>,
+    values: Option<sync::Values>,
     shared: Arc<Shared>,
     engine: Option<Engine>,
     analyzer: Option<Analyzer>,
@@ -34,6 +35,7 @@ impl Default for AirZone {
     fn default() -> Self {
         Self {
             params: Arc::new(AirZoneParams::default()),
+            values: None,
             shared: Arc::new(Shared::new()),
             engine: None,
             analyzer: None,
@@ -186,12 +188,16 @@ impl Plugin for AirZone {
         self.engine = Some(Engine::new(sr, cfg.max_buffer_size as usize));
         self.analyzer = Some(Analyzer::new(sr));
         self.restore_match();
+        let mut vals = sync::Values::new(self.params.clone());
+        vals.refresh();
         if let Some(e) = self.engine.as_mut() {
-            sync::apply(&self.params, e);
+            let order = self.params.order.read().clone();
+            sync::apply(&vals, Some(&order), e);
             let lat = e.refresh_latency() as u32;
             self.last_latency = lat;
             context.set_latency_samples(lat);
         }
+        self.values = Some(vals);
         true
     }
 
@@ -217,7 +223,11 @@ impl Plugin for AirZone {
         }
         self.handle_commands();
         let Some(engine) = self.engine.as_mut() else { return ProcessStatus::Normal };
-        sync::apply(&self.params, engine);
+        if let Some(vals) = self.values.as_mut() {
+            vals.refresh();
+            let guard = self.params.order.try_read();
+            sync::apply(vals, guard.as_deref().map(|v| v.as_slice()), engine);
+        }
         let lat = engine.refresh_latency() as u32;
         if lat != self.last_latency {
             self.last_latency = lat;
