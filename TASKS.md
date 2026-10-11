@@ -41,6 +41,32 @@ _Updated after every task; each task is committed to `main`._
 
 - ✅ T27 `build.sh` – builds Windows (native or cross via cargo-xwin) and macOS arm64 (+ optional universal) bundles into dist/
 
+## Betterment run (round 2)
+> ⚠️ Everything in this section was written **without compiling or running tests** (requested). The
+> first thing to do is `cargo test --workspace`; compile errors, if any, are small and local.
+
+- 🧪 T28 Responsive UI: resizable window (drag the corner), adaptive widths/columns, collapsing chain rail on narrow windows, scroll areas everywhere, layout smoke-test at 6 window sizes × 21 modules
+- 🧪 T29 Per-module presets: every module has a preset menu with prev/next, Reset and Save (user module presets in `Presets/Modules/`)
+- 🧪 T30 Module preset library: 130 presets across all 21 modules + tests (ids exist, belong to the module, in range, each renders finite)
+- 🧪 T31 Icons: all emoji / special glyphs removed from the UI; arrows are painted shapes, so nothing depends on the font
+- 🧪 T32 Master Assistant fixes (see below) + new tests
+- 🧪 T33 Pitch correction: diagnostics banner (module off / no pitch found), friendlier defaults (YIN threshold 0.2, voicing confidence 0.6), new mode **Vocal in Full Mix** (stem-estimated vocal tuned on its own and recombined)
+- 🧪 T34 Ozone-parity additions: A/B compare slots, tonal-target overlay on the spectrum, vectorscope, loudness-matched bypass
+- 🧪 T35 Manual template updated (module presets, A/B, vectorscope, assistant logic, resizing); run `cargo run -p airzone26 --example gen_docs` to regenerate docs/manual.html
+- ⬜ T36 Still missing vs. Ozone: Clarity module, Codec Preview, separate Tonal Balance Control plug-in, reference-track A/B player, ML stem separation, Maximizer "IRC" algorithms (ours are original AZ-1..5)
+
+Legend 🧪 = written, not compiled/tested yet.
+
+### What was wrong with the Master Assistant (fixed in T32)
+1. **Empty low bands**: spectrum bands below ~100 Hz often contained no FFT bin and were read as −140 dB, so the assistant "saw" a huge lack of bass and suggested low-end boosts. They are now interpolated, and tonal advice only uses 90 Hz – 12 kHz.
+2. **Level offset**: the offset between measurement and target used a mean over all bands including broken ones; now a median over the reliable range.
+3. **Many fighting bells**: replaced by one broad tilt shelf for overall brightness plus *cuts only* for prominent narrow excesses (max 4 bands, ±3.5 dB).
+4. **Crest factor from raw peak/RMS** was skewed by quiet intros; decisions now use peak-to-loudness ratio (PLR).
+5. **Sub vs. bass** compared sums over different numbers of FFT bins (so "sub is weak" fired almost always); now energy per octave over 30–80 Hz vs 80–250 Hz.
+6. **Correlation** used the instantaneous meter value at the end of the capture; now long-term over the whole capture.
+7. **Compressor threshold** was a fixed −20 dB regardless of level; now derived from the measured loudness.
+8. **Too little / too quiet audio** now produces "play at least 5 s of the loudest section" instead of nonsense.
+
 ## Optional (do last)
 - ✅ T26 Pitch Correction section: natural-sounding auto-tune for vocals, single instruments or full songs
   - ✅ T26a YIN pitch tracker (accurate to a few cents) + tests

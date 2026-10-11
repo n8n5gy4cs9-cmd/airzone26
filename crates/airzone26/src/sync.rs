@@ -329,7 +329,9 @@ pub fn apply(v: &Values, order: Option<&[u8]>, e: &mut Engine) {
     e.maximizer.true_peak = v.b("mx_tp");
 
     let mode = v.i("pc_mode");
-    e.pitch_full_song = mode >= 2;
+    e.pitch_full_song = mode == 2;
+    e.pitch_mix_vocal = mode >= 3;
+    e.gain_match = v.b("gmatch");
     let ps = &mut e.pitch.settings;
     ps.mode = if mode == 1 { PitchMode::Instrument } else { PitchMode::Vocal };
     ps.key = Key { root: v.i("pc_root").min(11) as u8, scale: ScaleKind::ALL[v.i("pc_scale").min(8)] };

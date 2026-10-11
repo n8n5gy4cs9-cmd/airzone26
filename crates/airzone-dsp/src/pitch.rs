@@ -55,7 +55,7 @@ impl PitchDetector {
             d: vec![0.0; WIN_DEC / 2 + 1],
             min_hz: 50.0,
             max_hz: 1500.0,
-            threshold: 0.15,
+            threshold: 0.2,
         }
     }
 
@@ -357,7 +357,7 @@ impl Default for PitchSettings {
             max_shift_cents: 200.0,
             min_hz: 70.0,
             max_hz: 1000.0,
-            confidence: 0.75,
+            confidence: 0.6,
         }
     }
 }
@@ -384,6 +384,8 @@ pub struct PitchMeter {
     pub target_note: i32,
     pub shift_cents: f32,
     pub f0: f32,
+    /// Fraction (0..1, ~2 s smoothing) of the audio in which a usable pitch was found.
+    pub voiced_ratio: f32,
 }
 
 const HN: usize = 1 << 16;
@@ -558,7 +560,11 @@ impl PitchCorrector {
             let vib = (self.center - m) * 100.0;
             want = s.amount * (err_c + (1.0 - s.preserve) * vib);
             want = want.clamp(-s.max_shift_cents, s.max_shift_cents);
-            self.meter = PitchMeter { voiced: true, midi: m, target_note: self.note, shift_cents: self.shift, f0: est.f0 };
+            self.meter.voiced = true;
+            self.meter.midi = m;
+            self.meter.target_note = self.note;
+            self.meter.shift_cents = self.shift;
+            self.meter.f0 = est.f0;
         } else {
             self.med_n = 0;
             self.meter.voiced = false;
@@ -568,6 +574,8 @@ impl PitchCorrector {
         let alpha = if tau <= 1.0e-4 { 1.0 } else { 1.0 - (-dt / tau).exp() };
         self.shift += (want - self.shift) * alpha;
         self.voiced_prev = voiced;
+        self.meter.shift_cents = self.shift;
+        self.meter.voiced_ratio += ((if voiced { 1.0 } else { 0.0 }) - self.meter.voiced_ratio) * (dt / 2.0).min(1.0);
 
         // time of this estimate = centre of the detector window
         let time = (self.n_in - self.det.window_samples() as i64 / 2).max(0) as u64;

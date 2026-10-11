@@ -4,18 +4,22 @@ mod assistant;
 mod modules;
 mod widgets;
 
+use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
-use airzone_dsp::chain::{ModuleId, MODULE_COUNT};
+use airzone_dsp::assistant::Genre;
+use airzone_dsp::chain::{sanitize_order, ModuleId, MODULE_COUNT};
 use airzone_dsp::meter::SPEC_POINTS;
 use airzone_dsp::spectral::SpectrumProfile;
 use nih_plug::prelude::*;
-use nih_plug_egui::egui::{self, vec2, Color32, Pos2, RichText, Sense, Stroke};
 use nih_plug_egui::create_egui_editor;
+use nih_plug_egui::egui::{self, vec2, Color32, Pos2, RichText, Sense, Stroke};
+use nih_plug_egui::resizable_window::ResizableWindow;
 use parking_lot::Mutex;
 
+use crate::module_presets::{self, ModulePreset};
 use crate::params::AirZoneParams;
 use crate::presets::{self, Preset};
 use crate::shared::*;
@@ -33,11 +37,22 @@ pub struct State {
     save_name: String,
     show_save: bool,
     spec_tilt: bool,
+    show_target: bool,
+    target_genre: usize,
     pub ref_path: String,
     pub status: String,
     ref_job: Option<RefJob>,
     assist: assistant::AssistUi,
     themed: bool,
+    /// A/B compare slots and which one is live.
+    ab: [Option<Preset>; 2],
+    ab_active: usize,
+    /// Factory module presets (built once) and cached user module presets.
+    mod_factory: Vec<ModulePreset>,
+    mod_user_cache: HashMap<usize, Vec<ModulePreset>>,
+    /// Name of the last applied preset per module.
+    mod_current: HashMap<usize, String>,
+    pub mod_save_name: String,
 }
 
 impl State {
@@ -57,11 +72,19 @@ impl State {
             save_name: String::new(),
             show_save: false,
             spec_tilt: true,
+            show_target: false,
+            target_genre: 0,
             ref_path: String::new(),
             status: String::new(),
             ref_job: None,
             assist: assistant::AssistUi::default(),
             themed: false,
+            ab: [None, None],
+            ab_active: 0,
+            mod_factory: module_presets::factory(),
+            mod_user_cache: HashMap::new(),
+            mod_current: HashMap::new(),
+            mod_save_name: String::new(),
         }
     }
 
@@ -70,7 +93,7 @@ impl State {
         let path = std::path::PathBuf::from(self.ref_path.trim().trim_matches('"'));
         let job: RefJob = Arc::new(Mutex::new(None));
         self.ref_job = Some(job.clone());
-        self.status = "Analysing reference…".into();
+        self.status = "Analysing reference...".into();
         std::thread::spawn(move || {
             *job.lock() = Some(crate::analysis::analyze_wav(&path));
         });
@@ -93,6 +116,26 @@ impl State {
     fn set_current(&mut self, name: &str) {
         self.current = name.to_string();
         self.params.ui_prefs.lock().preset_name = name.to_string();
+    }
+
+    /// Factory + user presets for one module.
+    pub fn module_preset_list(&mut self, m: ModuleId) -> Vec<ModulePreset> {
+        let user = self.mod_user_cache.entry(m.index()).or_insert_with(|| module_presets::load_user_modules(m)).clone();
+        let mut v: Vec<ModulePreset> = self.mod_factory.iter().filter(|p| p.module as usize == m.index()).cloned().collect();
+        v.extend(user);
+        v
+    }
+
+    pub fn module_current(&self, m: ModuleId) -> String {
+        self.mod_current.get(&m.index()).cloned().unwrap_or_default()
+    }
+
+    pub fn set_module_current(&mut self, m: ModuleId, name: &str) {
+        self.mod_current.insert(m.index(), name.to_string());
+    }
+
+    pub fn forget_user_modules(&mut self, m: ModuleId) {
+        self.mod_user_cache.remove(&m.index());
     }
 }
 
@@ -127,41 +170,96 @@ fn draw(ctx: &egui::Context, setter: &ParamSetter, st: &mut State) {
     st.poll_jobs();
     let params = st.params.clone();
     let shared = st.shared.clone();
+    let es = params.editor_state.clone();
 
-    top_bar(ctx, setter, st, &params);
-    bottom_bar(ctx, setter, &params, &shared);
-    rail(ctx, setter, st, &params, &shared);
-
-    egui::CentralPanel::default().show(ctx, |ui| {
-        spectrum(ui, &shared, st.spec_tilt);
-        ui.checkbox(&mut st.spec_tilt, "Spectrum slope compensation (+4.5 dB/oct)");
-        ui.separator();
-        let c = modules::Ctx { p: &params, setter, sh: &shared };
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-            let sel = st.selected;
-            modules::show(ui, sel, &c, st);
+    ResizableWindow::new("airzone_resize").min_size(vec2(480.0, 340.0)).show(ctx, &es, |ui| {
+        let narrow = ui.available_width() < 820.0;
+        top_bar(ui, setter, st, &params, narrow);
+        bottom_bar(ui, &params, &shared);
+        if !narrow {
+            rail(ui, setter, st, &params, &shared);
+        }
+        egui::CentralPanel::default().frame(egui::Frame::default().inner_margin(egui::Margin::symmetric(6, 4))).show_inside(ui, |ui| {
+            if narrow {
+                compact_selector(ui, setter, st, &params);
+            }
+            let h = ui.available_height();
+            let target = if st.show_target { Some(Genre::ALL[st.target_genre.min(Genre::ALL.len() - 1)].target_shape()) } else { None };
+            spectrum(ui, &shared, st.spec_tilt, (h * 0.26).clamp(70.0, 220.0), target);
+            ui.horizontal_wrapped(|ui| {
+                ui.checkbox(&mut st.spec_tilt, "Slope compensation (+4.5 dB/oct)");
+                ui.checkbox(&mut st.show_target, "Show tonal target");
+                if st.show_target {
+                    egui::ComboBox::from_id_salt("target_genre").selected_text(Genre::ALL[st.target_genre.min(Genre::ALL.len() - 1)].name()).show_ui(ui, |ui| {
+                        for (i, g) in Genre::ALL.iter().enumerate() {
+                            ui.selectable_value(&mut st.target_genre, i, g.name());
+                        }
+                    });
+                }
+                if !st.status.is_empty() {
+                    ui.label(RichText::new(st.status.clone()).size(11.0).color(ACCENT2));
+                }
+            });
+            ui.separator();
+            let c = modules::Ctx { p: &params, setter, sh: &shared };
+            egui::ScrollArea::both().auto_shrink([false, false]).show(ui, |ui| {
+                let sel = st.selected;
+                modules::show(ui, sel, &c, st);
+            });
         });
     });
 
     assistant::show(ctx, &mut st.assist, &params, &shared, setter);
 }
 
-fn top_bar(ctx: &egui::Context, setter: &ParamSetter, st: &mut State, p: &AirZoneParams) {
-    egui::TopBottomPanel::top("top").exact_height(46.0).show(ctx, |ui| {
-        ui.horizontal_centered(|ui| {
+/// The chain order with every module present exactly once (old saved states may lack newer modules).
+fn full_order(p: &AirZoneParams) -> Vec<u8> {
+    let saved: Vec<u8> = p.order.read().clone();
+    sanitize_order(&saved).iter().map(|m| m.index() as u8).collect()
+}
+
+/// Module picker used instead of the side rail when the window is narrow.
+fn compact_selector(ui: &mut egui::Ui, setter: &ParamSetter, st: &mut State, p: &AirZoneParams) {
+    let order = full_order(p);
+    ui.horizontal_wrapped(|ui| {
+        egui::ComboBox::from_id_salt("compact_module").selected_text(st.selected.name()).height(420.0).show_ui(ui, |ui| {
+            for o in &order {
+                if let Some(m) = ModuleId::from_index(*o as usize) {
+                    let on = p.on.by_index()[m.index()].value();
+                    let label = if on { format!("[on]  {}", m.name()) } else { format!("[off] {}", m.name()) };
+                    ui.selectable_value(&mut st.selected, m, label);
+                }
+            }
+        });
+        let sw = p.on.by_index()[st.selected.index()];
+        let mut on = sw.value();
+        if ui.checkbox(&mut on, "On").changed() {
+            setter.begin_set_parameter(sw);
+            setter.set_parameter(sw, on);
+            setter.end_set_parameter(sw);
+        }
+        let lat = st.shared.latency.load(Ordering::Relaxed);
+        ui.label(RichText::new(format!("latency {} smp", lat)).size(10.0).color(TEXT_DIM));
+    });
+}
+
+fn top_bar(ui: &mut egui::Ui, setter: &ParamSetter, st: &mut State, p: &AirZoneParams, narrow: bool) {
+    egui::TopBottomPanel::top("top").show_inside(ui, |ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new("AIRZONE 26").size(20.0).strong().color(ACCENT));
             ui.separator();
             // preset navigation
             let n = st.presets.len();
             let idx = st.presets.iter().position(|x| x.name == st.current);
-            if ui.button("◀").clicked() && n > 0 {
+            if arrow_button(ui, Dir::Left).on_hover_text("Previous preset").clicked() && n > 0 {
                 let i = idx.map(|i| (i + n - 1) % n).unwrap_or(0);
                 let pr = st.presets[i].clone();
                 presets::apply_gui(&pr, p, setter);
                 st.set_current(&pr.name);
             }
-            let label = if st.current.is_empty() { "— Presets —".to_string() } else { st.current.clone() };
-            egui::ComboBox::from_id_salt("presets").selected_text(label).width(260.0).height(520.0).show_ui(ui, |ui| {
+            let label = if st.current.is_empty() { "Presets".to_string() } else { st.current.clone() };
+            let pw = if narrow { 170.0 } else { 260.0 };
+            egui::ComboBox::from_id_salt("presets").selected_text(label).width(pw).height(520.0).show_ui(ui, |ui| {
                 let mut last_cat = String::new();
                 let mut chosen: Option<Preset> = None;
                 for pr in &st.presets {
@@ -178,30 +276,52 @@ fn top_bar(ctx: &egui::Context, setter: &ParamSetter, st: &mut State, p: &AirZon
                     st.set_current(&pr.name);
                 }
             });
-            if ui.button("▶").clicked() && n > 0 {
+            if arrow_button(ui, Dir::Right).on_hover_text("Next preset").clicked() && n > 0 {
                 let i = idx.map(|i| (i + 1) % n).unwrap_or(0);
                 let pr = st.presets[i].clone();
                 presets::apply_gui(&pr, p, setter);
                 st.set_current(&pr.name);
             }
-            if ui.button("💾 Save").clicked() {
+            if ui.button("Save").on_hover_text("Save the whole chain as a user preset").clicked() {
                 st.show_save = !st.show_save;
             }
             ui.separator();
-            if ui.button("🎛 Master Assistant").clicked() {
+            if ui.button("Master Assistant").clicked() {
                 st.assist.open = true;
             }
             ui.separator();
+            // A/B compare
+            ui.label(RichText::new("A/B").size(11.0).color(TEXT_DIM));
+            for slot in 0..2usize {
+                let name = if slot == 0 { "A" } else { "B" };
+                if ui.selectable_label(st.ab_active == slot, name).on_hover_text("Switch between two complete settings").clicked() && st.ab_active != slot {
+                    let cur = presets::capture("ab", "User", p);
+                    let active = st.ab_active;
+                    st.ab[active] = Some(cur);
+                    if let Some(other) = st.ab[slot].clone() {
+                        presets::apply_gui(&other, p, setter);
+                    }
+                    st.ab_active = slot;
+                }
+            }
+            if ui.small_button("Copy").on_hover_text("Copy the current settings into the other A/B slot").clicked() {
+                let cur = presets::capture("ab", "User", p);
+                let other = 1 - st.ab_active;
+                st.ab[other] = Some(cur);
+            }
+            ui.separator();
             toggle(ui, setter, &p.bypass);
-            ui.add(nih_plug_egui::widgets::ParamSlider::for_param(&p.input_gain, setter).with_width(110.0));
-            ui.label("→");
-            ui.add(nih_plug_egui::widgets::ParamSlider::for_param(&p.output_gain, setter).with_width(110.0));
+            toggle(ui, setter, &p.gain_match);
+            let gw = if narrow { 84.0 } else { 110.0 };
+            ui.add(nih_plug_egui::widgets::ParamSlider::for_param(&p.input_gain, setter).with_width(gw));
+            ui.label("to");
+            ui.add(nih_plug_egui::widgets::ParamSlider::for_param(&p.output_gain, setter).with_width(gw));
             combo_small(ui, setter, &p.dither, "dither".into(), 70.0);
         });
     });
     if st.show_save {
-        egui::TopBottomPanel::top("save").show(ctx, |ui| {
-            ui.horizontal(|ui| {
+        egui::TopBottomPanel::top("save").show_inside(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.label("Preset name:");
                 ui.text_edit_singleline(&mut st.save_name);
                 if ui.button("Save to user presets").clicked() && !st.save_name.trim().is_empty() {
@@ -226,10 +346,10 @@ fn top_bar(ctx: &egui::Context, setter: &ParamSetter, st: &mut State, p: &AirZon
     }
 }
 
-fn rail(ctx: &egui::Context, setter: &ParamSetter, st: &mut State, p: &AirZoneParams, sh: &Shared) {
-    egui::SidePanel::left("rail").exact_width(210.0).show(ctx, |ui| {
+fn rail(ui: &mut egui::Ui, setter: &ParamSetter, st: &mut State, p: &AirZoneParams, sh: &Shared) {
+    egui::SidePanel::left("rail").resizable(false).exact_width(196.0).show_inside(ui, |ui| {
         ui.label(RichText::new("SIGNAL CHAIN").size(10.0).color(TEXT_DIM));
-        let mut order: Vec<u8> = p.order.read().clone();
+        let mut order: Vec<u8> = full_order(p);
         let mut swap: Option<(usize, usize)> = None;
         egui::ScrollArea::vertical().show(ui, |ui| {
             for pos in 0..MODULE_COUNT.min(order.len()) {
@@ -242,16 +362,16 @@ fn rail(ctx: &egui::Context, setter: &ParamSetter, st: &mut State, p: &AirZonePa
                         setter.set_parameter(sw, on);
                         setter.end_set_parameter(sw);
                     }
-                    let text = if m.is_spectral() { format!("{} ·fft", m.name()) } else { m.name().to_string() };
-                    let rt = RichText::new(text).color(if on { Color32::WHITE } else { TEXT_DIM });
+                    let text = if m.is_spectral() { format!("{} (fft)", m.name()) } else { m.name().to_string() };
+                    let rt = RichText::new(text).size(12.5).color(if on { Color32::WHITE } else { TEXT_DIM });
                     if ui.selectable_label(st.selected == m, rt).clicked() {
                         st.selected = m;
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.small_button("▼").clicked() && pos + 1 < order.len() {
+                        if arrow_button(ui, Dir::Down).on_hover_text("Move down in the chain").clicked() && pos + 1 < order.len() {
                             swap = Some((pos, pos + 1));
                         }
-                        if ui.small_button("▲").clicked() && pos > 0 {
+                        if arrow_button(ui, Dir::Up).on_hover_text("Move up in the chain").clicked() && pos > 0 {
                             swap = Some((pos, pos - 1));
                         }
                     });
@@ -273,67 +393,152 @@ fn rail(ctx: &egui::Context, setter: &ParamSetter, st: &mut State, p: &AirZonePa
 }
 
 fn lufs_text(v: f32) -> String {
-    if v < -69.0 { "−∞".into() } else { format!("{:.1}", v) }
+    if v < -69.0 {
+        "-inf".into()
+    } else {
+        format!("{:.1}", v)
+    }
 }
 
-fn bottom_bar(ctx: &egui::Context, _setter: &ParamSetter, p: &AirZoneParams, sh: &Shared) {
-    egui::TopBottomPanel::bottom("meters").exact_height(96.0).show(ctx, |ui| {
-        ui.horizontal(|ui| {
-            ui.vertical(|ui| {
-                let m = Shared::load(&sh.out_momentary);
-                let s = Shared::load(&sh.out_short);
-                let i = Shared::load(&sh.out_integrated);
-                bar(ui, "Moment.", &lufs_text(m), m, -40.0, 0.0, ACCENT, 200.0);
-                bar(ui, "Short", &lufs_text(s), s, -40.0, 0.0, ACCENT, 200.0);
-                bar(ui, "Integr.", &lufs_text(i), i, -40.0, 0.0, ACCENT, 200.0);
+fn bottom_bar(ui: &mut egui::Ui, p: &AirZoneParams, sh: &Shared) {
+    egui::TopBottomPanel::bottom("meters").show_inside(ui, |ui| {
+        egui::ScrollArea::horizontal().id_salt("meters_scroll").show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    let m = Shared::load(&sh.out_momentary);
+                    let s = Shared::load(&sh.out_short);
+                    let i = Shared::load(&sh.out_integrated);
+                    bar(ui, "Moment.", &lufs_text(m), m, -40.0, 0.0, ACCENT, 200.0);
+                    bar(ui, "Short", &lufs_text(s), s, -40.0, 0.0, ACCENT, 200.0);
+                    bar(ui, "Integr.", &lufs_text(i), i, -40.0, 0.0, ACCENT, 200.0);
+                });
+                ui.separator();
+                ui.vertical(|ui| {
+                    let tp = Shared::load(&sh.true_peak);
+                    let ceil = p.max.ceiling.value();
+                    let col = if tp > ceil + 0.1 && p.on.maximizer.value() { RED } else { GREEN };
+                    bar(ui, "True pk", &format!("{:.1} dBTP", tp.max(-99.0)), tp, -40.0, 3.0, col, 200.0);
+                    let cor = Shared::load(&sh.correlation);
+                    bar(ui, "Corr.", &format!("{:+.2}", cor), (cor + 1.0) * 0.5, 0.0, 1.0, if cor < 0.0 { RED } else { GREEN }, 200.0);
+                    ui.label(RichText::new(format!("LRA {:.1} LU   In: {} LUFS", Shared::load(&sh.out_lra), lufs_text(Shared::load(&sh.in_integrated)))).size(11.0).color(TEXT_DIM));
+                });
+                ui.separator();
+                gr_meter(ui, "MAX", Shared::load(&sh.gr[GR_MAXIMIZER]), 12.0);
+                for b in 0..3 {
+                    gr_meter(ui, &format!("D{}", b + 1), Shared::load(&sh.gr[GR_DYN_BASE + b]), 12.0);
+                }
+                gr_meter(ui, "COMP", Shared::load(&sh.gr[GR_VCOMP]), 12.0);
+                ui.separator();
+                if ui.button("Reset meters").clicked() {
+                    sh.reset_meters.store(true, Ordering::Relaxed);
+                }
             });
-            ui.separator();
-            ui.vertical(|ui| {
-                let tp = Shared::load(&sh.true_peak);
-                let ceil = p.max.ceiling.value();
-                let col = if tp > ceil + 0.1 && p.on.maximizer.value() { RED } else { GREEN };
-                bar(ui, "True pk", &format!("{:.1} dBTP", tp.max(-99.0)), tp, -40.0, 3.0, col, 200.0);
-                let cor = Shared::load(&sh.correlation);
-                bar(ui, "Corr.", &format!("{:+.2}", cor), (cor + 1.0) * 0.5, 0.0, 1.0, if cor < 0.0 { RED } else { GREEN }, 200.0);
-                ui.label(RichText::new(format!("LRA {:.1} LU   In: {} LUFS", Shared::load(&sh.out_lra), lufs_text(Shared::load(&sh.in_integrated)))).size(11.0).color(TEXT_DIM));
-            });
-            ui.separator();
-            gr_meter(ui, "MAX", Shared::load(&sh.gr[GR_MAXIMIZER]), 12.0);
-            for b in 0..3 {
-                gr_meter(ui, &format!("D{}", b + 1), Shared::load(&sh.gr[GR_DYN_BASE + b]), 12.0);
-            }
-            gr_meter(ui, "COMP", Shared::load(&sh.gr[GR_VCOMP]), 12.0);
-            ui.separator();
-            if ui.button("Reset meters").clicked() {
-                sh.reset_meters.store(true, Ordering::Relaxed);
-            }
         });
     });
 }
 
-fn spectrum(ui: &mut egui::Ui, sh: &Shared, tilt: bool) {
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 190.0), Sense::hover());
+fn spectrum(ui: &mut egui::Ui, sh: &Shared, tilt: bool, height: f32, target: Option<[f32; airzone_dsp::spectral::MATCH_BANDS]>) {
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
     draw_freq_grid(ui, rect);
     let painter = ui.painter_at(rect);
     for db in [-20.0, -40.0, -60.0, -80.0] {
         let y = rect.top() + rect.height() * (0.0 - db) / 100.0;
         painter.line_segment([Pos2::new(rect.left(), y), Pos2::new(rect.right(), y)], Stroke::new(1.0_f32, Color32::from_rgb(26, 29, 35)));
     }
-
-
-    for (arr, color, w) in [(&sh.spectrum_in, Color32::from_rgb(110, 120, 135), 1.2), (&sh.spectrum_out, ACCENT, 2.0)] {
+    let tilt_db = |f: f32| if tilt { 4.5 * (f / 1000.0).log2() } else { 0.0 };
+    // measured curves (db value after optional slope compensation)
+    let mut out_curve: Vec<(f32, f32)> = Vec::with_capacity(SPEC_POINTS);
+    for (arr, color, w) in [(&sh.spectrum_in, Color32::from_rgb(110, 120, 135), 1.2_f32), (&sh.spectrum_out, ACCENT, 2.0_f32)] {
+        let mut pts: Vec<Pos2> = Vec::with_capacity(SPEC_POINTS);
+        for i in 0..SPEC_POINTS {
+            let f = airzone_dsp::util::log_freq(i, SPEC_POINTS, 20.0, 20000.0);
+            let db = Shared::load(&arr[i]) + tilt_db(f);
+            if color == ACCENT {
+                out_curve.push((f, db));
+            }
+            let x = freq_to_x(f, rect);
+            let y = rect.top() + rect.height() * ((0.0 - db) / 100.0).clamp(0.0, 1.0);
+            pts.push(Pos2::new(x, y));
+        }
+        polyline(ui, rect, pts, color, w);
+    }
+    // genre target (aligned to the measured curve between 100 Hz and 8 kHz)
+    if let Some(shape) = target {
+        let mb = airzone_dsp::spectral::MATCH_BANDS;
+        let sample = |f: f32| -> f32 {
+            let pos = ((f / 20.0).ln() / 1000f32.ln() * (mb - 1) as f32).clamp(0.0, (mb - 1) as f32);
+            let i = pos.floor() as usize;
+            let fr = pos - i as f32;
+            let a = shape[i];
+            let b = shape[(i + 1).min(mb - 1)];
+            a + (b - a) * fr
+        };
+        let (mut acc, mut n) = (0.0f32, 0.0f32);
+        for (f, db) in &out_curve {
+            if *f >= 100.0 && *f <= 8000.0 && *db > -90.0 {
+                acc += db - (sample(*f) + tilt_db(*f));
+                n += 1.0;
+            }
+        }
+        let offset = if n > 0.0 { acc / n } else { -50.0 };
         let pts: Vec<Pos2> = (0..SPEC_POINTS)
             .map(|i| {
                 let f = airzone_dsp::util::log_freq(i, SPEC_POINTS, 20.0, 20000.0);
-                let mut db = Shared::load(&arr[i]);
-                if tilt {
-                    db += 4.5 * (f / 1000.0).log2();
-                }
-                let x = freq_to_x(f, rect);
-                let y = rect.top() + rect.height() * ((0.0 - db) / 100.0).clamp(0.0, 1.0);
-                Pos2::new(x, y)
+                let db = sample(f) + tilt_db(f) + offset;
+                Pos2::new(freq_to_x(f, rect), rect.top() + rect.height() * ((0.0 - db) / 100.0).clamp(0.0, 1.0))
             })
             .collect();
-        polyline(ui, rect, pts, color, w);
+        polyline(ui, rect, pts, ACCENT2, 1.5);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nih_plug::context::gui::GuiContext;
+    use nih_plug::wrapper::state::PluginState;
+
+    struct Mock;
+    impl GuiContext for Mock {
+        fn plugin_api(&self) -> PluginApi {
+            PluginApi::Clap
+        }
+        fn request_resize(&self) -> bool {
+            true
+        }
+        unsafe fn raw_begin_set_parameter(&self, _p: ParamPtr) {}
+        unsafe fn raw_set_parameter_normalized(&self, _p: ParamPtr, _n: f32) {}
+        unsafe fn raw_end_set_parameter(&self, _p: ParamPtr) {}
+        fn get_state(&self) -> PluginState {
+            PluginState { version: String::new(), params: Default::default(), fields: Default::default() }
+        }
+        fn set_state(&self, _s: PluginState) {}
+    }
+
+    /// Lay the whole editor out at many window sizes with every module selected: nothing may panic.
+    #[test]
+    fn editor_lays_out_at_all_sizes_for_all_modules() {
+        let params = Arc::new(AirZoneParams::default());
+        let shared = Arc::new(Shared::new());
+        let mock = Mock;
+        let setter = ParamSetter::new(&mock);
+        let ctx = egui::Context::default();
+        let mut st = State::new(params, shared);
+        st.show_target = true;
+        for (w, h) in [(480.0, 340.0), (640.0, 420.0), (800.0, 560.0), (1040.0, 680.0), (1600.0, 900.0), (2400.0, 1400.0)] {
+            for m in ModuleId::ALL {
+                st.selected = m;
+                for _ in 0..2 {
+                    let input = egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(Pos2::ZERO, vec2(w, h))),
+                        ..Default::default()
+                    };
+                    let _ = ctx.run(input, |ctx| draw(ctx, &setter, &mut st));
+                }
+            }
+        }
+        st.assist.open = true;
+        let input = egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(Pos2::ZERO, vec2(640.0, 420.0))), ..Default::default() };
+        let _ = ctx.run(input, |ctx| draw(ctx, &setter, &mut st));
     }
 }

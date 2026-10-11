@@ -78,7 +78,7 @@ impl StemEq {
         self.prev.iter_mut().for_each(|p| *p = [0.25; 4]);
     }
 
-    fn apply(&mut self, sr: f32, l: &mut [Complex32], r: &mut [Complex32]) {
+    pub fn apply(&mut self, sr: f32, l: &mut [Complex32], r: &mut [Complex32]) {
         let mut mm = vec![0.0f32; BINS];
         let mut ms = vec![0.0f32; BINS];
         for k in 0..BINS {
@@ -198,12 +198,37 @@ impl SpectrumProfile {
         if self.frames == 0 {
             return out;
         }
-        let mut mean = 0.0;
+        // Low bands have fewer than one FFT bin per band, so some bands never receive data. Those
+        // must not be treated as -140 dB: fill them by interpolating between measured neighbours.
+        let valid: Vec<bool> = self.power.iter().map(|p| *p > 1.0e-18).collect();
+        let first = valid.iter().position(|v| *v);
+        let last = valid.iter().rposition(|v| *v);
+        let (Some(first), Some(last)) = (first, last) else { return out };
         for b in 0..MATCH_BANDS {
-            out[b] = 10.0 * (self.power[b] / self.frames as f32 + 1e-14).log10();
-            mean += out[b];
+            if valid[b] {
+                out[b] = 10.0 * (self.power[b] / self.frames as f32 + 1e-14).log10();
+            }
         }
-        mean /= MATCH_BANDS as f32;
+        let mut prev = first;
+        for b in first..=last {
+            if valid[b] {
+                prev = b;
+                continue;
+            }
+            let mut next = b;
+            while next < last && !valid[next] {
+                next += 1;
+            }
+            let t = (b - prev) as f32 / (next - prev).max(1) as f32;
+            out[b] = out[prev] + (out[next] - out[prev]) * t;
+        }
+        for b in 0..first {
+            out[b] = out[first];
+        }
+        for b in last + 1..MATCH_BANDS {
+            out[b] = out[last];
+        }
+        let mean = out.iter().sum::<f32>() / MATCH_BANDS as f32;
         out.iter_mut().for_each(|x| *x -= mean);
         out
     }

@@ -23,12 +23,13 @@ pub struct Ctx<'a> {
 }
 
 pub fn show(ui: &mut Ui, m: ModuleId, c: &Ctx, st: &mut State) {
-    ui.horizontal(|ui| {
+    ui.horizontal_wrapped(|ui| {
         ui.heading(RichText::new(m.name()).color(ACCENT));
         let sw = c.p.on.by_index()[m.index()];
         toggle(ui, c.setter, sw);
         ui.label(RichText::new(description(m)).color(TEXT_DIM).size(11.0));
     });
+    module_preset_bar(ui, m, c, st);
     ui.separator();
     match m {
         ModuleId::Unlimiter => unlimiter(ui, c),
@@ -52,6 +53,55 @@ pub fn show(ui: &mut Ui, m: ModuleId, c: &Ctx, st: &mut State) {
         ModuleId::VintageLimiter => vlim(ui, c),
         ModuleId::Maximizer => maximizer(ui, c),
         ModuleId::PitchCorrect => pitch(ui, c),
+    }
+}
+
+/// Preset menu, previous/next, reset and save for the module being edited.
+fn module_preset_bar(ui: &mut Ui, m: ModuleId, c: &Ctx, st: &mut State) {
+    use crate::module_presets as mp;
+    let list = st.module_preset_list(m);
+    let current = st.module_current(m);
+    let mut chosen: Option<mp::ModulePreset> = None;
+    ui.horizontal_wrapped(|ui| {
+        ui.label(RichText::new("Presets").size(11.0).color(TEXT_DIM));
+        let idx = list.iter().position(|p| p.name == current);
+        if arrow_button(ui, Dir::Left).on_hover_text("Previous module preset").clicked() && !list.is_empty() {
+            chosen = Some(list[idx.map(|i| (i + list.len() - 1) % list.len()).unwrap_or(0)].clone());
+        }
+        let label = if current.is_empty() { format!("{} presets ({})", m.name(), list.len()) } else { current.clone() };
+        egui::ComboBox::from_id_salt(("modpreset", m.index())).selected_text(label).width(210.0).height(420.0).show_ui(ui, |ui| {
+            for p in &list {
+                let tag = if p.user { format!("{}  (user)", p.name) } else { p.name.clone() };
+                if ui.selectable_label(p.name == current, tag).on_hover_text(&p.description).clicked() {
+                    chosen = Some(p.clone());
+                }
+            }
+        });
+        if arrow_button(ui, Dir::Right).on_hover_text("Next module preset").clicked() && !list.is_empty() {
+            chosen = Some(list[idx.map(|i| (i + 1) % list.len()).unwrap_or(0)].clone());
+        }
+        if ui.small_button("Reset").on_hover_text("Return this module to its default settings").clicked() {
+            mp::reset_module_gui(m, c.p, c.setter);
+            st.set_module_current(m, "");
+        }
+        ui.add(egui::TextEdit::singleline(&mut st.mod_save_name).desired_width(110.0).hint_text("preset name"));
+        if ui.small_button("Save").on_hover_text("Save this module's settings as a user preset").clicked() && !st.mod_save_name.trim().is_empty() {
+            let name = st.mod_save_name.trim().to_string();
+            let p = mp::capture_module(m, &name, c.p);
+            match mp::save_user_module(&p) {
+                Ok(_) => {
+                    st.forget_user_modules(m);
+                    st.set_module_current(m, &name);
+                    st.status = format!("Saved module preset '{}'", name);
+                }
+                Err(e) => st.status = format!("Save failed: {e}"),
+            }
+            st.mod_save_name.clear();
+        }
+    });
+    if let Some(p) = chosen {
+        mp::apply_module_gui(&p, c.p, c.setter);
+        st.set_module_current(m, &p.name);
     }
 }
 
@@ -91,18 +141,15 @@ fn unlimiter(ui: &mut Ui, c: &Ctx) {
 fn stem(ui: &mut Ui, c: &Ctx) {
     let p = &c.p.stem;
     ui.label(RichText::new("Stems are estimated with harmonic/percussive and centre-channel analysis. Great for small corrections (±6 dB); extreme settings will sound artificial.").color(TEXT_DIM).size(11.0));
-    ui.columns(4, |cols| {
-        let names = ["Bass", "Drums", "Vocals", "Other"];
-        let gains = [&p.bass_gain, &p.drums_gain, &p.vocals_gain, &p.other_gain];
-        let tilts = [&p.bass_tilt, &p.drums_tilt, &p.vocals_tilt, &p.other_tilt];
-        for i in 0..4 {
-            let ui = &mut cols[i];
-            ui.label(RichText::new(names[i]).strong().color(ACCENT));
-            let e = Shared::load(&c.sh.stem_energy[i]);
-            bar(ui, "Energy", &format!("{:.0}%", e * 100.0), e, 0.0, 1.0, ACCENT, 90.0);
-            slider(ui, c.setter, gains[i]);
-            slider(ui, c.setter, tilts[i]);
-        }
+    let names = ["Bass", "Drums", "Vocals", "Other"];
+    let gains = [&p.bass_gain, &p.drums_gain, &p.vocals_gain, &p.other_gain];
+    let tilts = [&p.bass_tilt, &p.drums_tilt, &p.vocals_tilt, &p.other_tilt];
+    columns(ui, 4, 200.0, |i, ui| {
+        ui.label(RichText::new(names[i]).strong().color(ACCENT));
+        let e = Shared::load(&c.sh.stem_energy[i]);
+        bar(ui, "Energy", &format!("{:.0}%", e * 100.0), e, 0.0, 1.0, ACCENT, 90.0);
+        slider(ui, c.setter, gains[i]);
+        slider(ui, c.setter, tilts[i]);
     });
     sl!(ui, c.setter, p.focus);
     combo(ui, c.setter, &p.solo, "stem_solo");
@@ -117,11 +164,11 @@ fn match_eq(ui: &mut Ui, c: &Ctx, st: &mut State) {
     let rf = c.sh.match_progress[1].load(Ordering::Relaxed);
     ui.label(RichText::new("1. Play your mix and press Learn Source.  2. Play the reference (or load a WAV) and press Learn Reference.  3. Enable the module and set Amount.").color(TEXT_DIM).size(11.0));
     ui.horizontal(|ui| {
-        let b = if cap == CAP_SOURCE { "■ Stop learning source" } else { "● Learn Source" };
+        let b = if cap == CAP_SOURCE { "Stop learning source" } else { "Learn Source" };
         if ui.button(b).clicked() {
             c.sh.capture.store(if cap == CAP_SOURCE { CAP_OFF } else { CAP_SOURCE }, Ordering::Relaxed);
         }
-        let b = if cap == CAP_REFERENCE { "■ Stop learning reference" } else { "● Learn Reference (live)" };
+        let b = if cap == CAP_REFERENCE { "Stop learning reference" } else { "Learn Reference (live)" };
         if ui.button(b).clicked() {
             c.sh.capture.store(if cap == CAP_REFERENCE { CAP_OFF } else { CAP_REFERENCE }, Ordering::Relaxed);
         }
@@ -132,7 +179,14 @@ fn match_eq(ui: &mut Ui, c: &Ctx, st: &mut State) {
             c.sh.clear_reference.store(true, Ordering::Relaxed);
         }
     });
-    ui.label(format!("Source: {} frames {}   |   Reference: {} frames {}   {}", src, if src > 8 { "✔" } else { "…" }, rf, if rf > 8 { "✔" } else { "…" }, c.p.match_data.lock().ref_name));
+    ui.label(format!(
+        "Source: {} frames ({})   |   Reference: {} frames ({})   {}",
+        src,
+        if src > 8 { "ready" } else { "needs more" },
+        rf,
+        if rf > 8 { "ready" } else { "needs more" },
+        c.p.match_data.lock().ref_name
+    ));
     ui.horizontal(|ui| {
         ui.label("Reference WAV path:");
         ui.add(egui::TextEdit::singleline(&mut st.ref_path).desired_width(360.0).hint_text("C:\\Music\\reference.wav"));
@@ -145,7 +199,7 @@ fn match_eq(ui: &mut Ui, c: &Ctx, st: &mut State) {
     }
     // correction curve
     let curve = c.sh.match_curve.lock().clone();
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width().min(760.0), 160.0), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width().min(760.0), (ui.available_height() * 0.35).clamp(90.0, 170.0)), Sense::hover());
     draw_freq_grid(ui, rect);
     let mid = rect.center().y;
     ui.painter_at(rect).line_segment([Pos2::new(rect.left(), mid), Pos2::new(rect.right(), mid)], Stroke::new(1.0_f32, TEXT_DIM));
@@ -179,7 +233,7 @@ fn band_of(p: &EqBandP, sr: f32) -> (EqBand, f32) {
 fn equalizer(ui: &mut Ui, c: &Ctx) {
     let sr = Shared::load(&c.sh.sample_rate).max(8000.0);
     let w = ui.available_width().min(1000.0);
-    let (rect, _) = ui.allocate_exact_size(vec2(w, 230.0), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(vec2(w, (ui.available_height() * 0.45).clamp(130.0, 240.0)), Sense::hover());
     draw_freq_grid(ui, rect);
     let range = 18.0;
     let y_of = |db: f32| rect.center().y - db * (rect.height() * 0.5 / range);
@@ -239,6 +293,7 @@ fn equalizer(ui: &mut Ui, c: &Ctx) {
         }
     }
     ui.label(RichText::new("Drag nodes to set frequency/gain, scroll over a node to change Q.").color(TEXT_DIM).size(10.0));
+    egui::ScrollArea::horizontal().id_salt("eqgrid_scroll").show(ui, |ui| {
     egui::Grid::new("eqgrid").num_columns(8).spacing([8.0, 3.0]).show(ui, |ui| {
         for h in ["Band", "On", "Type", "Freq", "Gain", "Q", "Slope", "Place"] {
             ui.label(RichText::new(h).color(TEXT_DIM).size(11.0));
@@ -255,6 +310,7 @@ fn equalizer(ui: &mut Ui, c: &Ctx) {
             combo_small(ui, c.setter, &b.place, format!("eqp{i}"), 70.0);
             ui.end_row();
         }
+    });
     });
 }
 
@@ -282,7 +338,7 @@ fn stabilizer(ui: &mut Ui, c: &Ctx) {
     sl!(ui, c.setter, p.amount, p.range, p.slope, p.speed);
     toggle(ui, c.setter, &p.use_ref);
     ui.label(RichText::new("Applied correction per band").color(TEXT_DIM).size(11.0));
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width().min(760.0), 120.0), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width().min(760.0), 110.0), Sense::hover());
     draw_freq_grid(ui, rect);
     let mid = rect.center().y;
     let painter = ui.painter_at(rect);
@@ -310,7 +366,7 @@ fn bass(ui: &mut Ui, c: &Ctx) {
     bar(ui, "Sub", &format!("{:.1} dB", lv[0]), lv[0], -80.0, -10.0, ACCENT, 260.0);
     bar(ui, "Bass", &format!("{:.1} dB", lv[1]), lv[1], -80.0, -10.0, ACCENT, 260.0);
     bar(ui, "Rest", &format!("{:.1} dB", lv[2]), lv[2], -80.0, -10.0, TEXT_DIM, 260.0);
-    ui.label(format!("Sub − Bass: {:+.1} dB", lv[0] - lv[1]));
+    ui.label(format!("Sub - Bass: {:+.1} dB", lv[0] - lv[1]));
     ui.separator();
     sl!(ui, c.setter, p.sub_freq, p.bass_freq, p.sub_gain, p.bass_gain, p.sub_mono, p.bass_mono, p.punch, p.tighten, p.target_ratio, p.mix);
     toggle(ui, c.setter, &p.auto_balance);
@@ -330,14 +386,11 @@ fn dynamics(ui: &mut Ui, c: &Ctx) {
     });
     sl!(ui, c.setter, p.xo1, p.xo2, p.link, p.output, p.mix);
     toggle(ui, c.setter, &p.mid_side);
-    ui.columns(3, |cols| {
-        for i in 0..3 {
-            let ui = &mut cols[i];
-            let b = &p.bands[i];
-            ui.label(RichText::new(["Low", "Mid", "High"][i]).strong().color(ACCENT));
-            toggle(ui, c.setter, &b.on);
-            sl!(ui, c.setter, b.threshold, b.ratio, b.knee, b.attack, b.release, b.gain, b.exp_threshold, b.exp_ratio);
-        }
+    columns(ui, 3, 230.0, |i, ui| {
+        let b = &p.bands[i];
+        ui.label(RichText::new(["Low", "Mid", "High"][i]).strong().color(ACCENT));
+        toggle(ui, c.setter, &b.on);
+        sl!(ui, c.setter, b.threshold, b.ratio, b.knee, b.attack, b.release, b.gain, b.exp_threshold, b.exp_ratio);
     });
 }
 
@@ -367,26 +420,20 @@ fn exciter(ui: &mut Ui, c: &Ctx) {
     let p = &c.p.exciter;
     combo(ui, c.setter, &p.mode, "ex_mode");
     sl!(ui, c.setter, p.xo1, p.xo2, p.xo3, p.mix);
-    ui.columns(4, |cols| {
-        for i in 0..4 {
-            let ui = &mut cols[i];
-            let b = &p.bands[i];
-            ui.label(RichText::new(format!("Band {}", i + 1)).strong().color(ACCENT));
-            toggle(ui, c.setter, &b.on);
-            sl!(ui, c.setter, b.drive, b.amount, b.gain);
-        }
+    columns(ui, 4, 200.0, |i, ui| {
+        let b = &p.bands[i];
+        ui.label(RichText::new(format!("Band {}", i + 1)).strong().color(ACCENT));
+        toggle(ui, c.setter, &b.on);
+        sl!(ui, c.setter, b.drive, b.amount, b.gain);
     });
 }
 
 fn impact(ui: &mut Ui, c: &Ctx) {
     let p = &c.p.impact;
     sl!(ui, c.setter, p.xo1, p.xo2, p.mix);
-    ui.columns(3, |cols| {
-        for i in 0..3 {
-            let ui = &mut cols[i];
-            ui.label(RichText::new(["Low", "Mid", "High"][i]).strong().color(ACCENT));
-            sl!(ui, c.setter, p.bands[i].attack, p.bands[i].sustain);
-        }
+    columns(ui, 3, 230.0, |i, ui| {
+        ui.label(RichText::new(["Low", "Mid", "High"][i]).strong().color(ACCENT));
+        sl!(ui, c.setter, p.bands[i].attack, p.bands[i].sustain);
     });
 }
 
@@ -396,12 +443,42 @@ fn imager(ui: &mut Ui, c: &Ctx) {
     bar(ui, "Width", &format!("{:.0}%", w * 100.0), w, 0.0, 1.0, ACCENT, 220.0);
     let cor = Shared::load(&c.sh.correlation);
     bar(ui, "Corr.", &format!("{:+.2}", cor), (cor + 1.0) * 0.5, 0.0, 1.0, if cor < 0.0 { RED } else { GREEN }, 220.0);
+    vectorscope(ui, c.sh);
     sl!(ui, c.setter, p.xo1, p.xo2, p.xo3, p.stereoize, p.balance);
     for i in 0..4 {
+        let (lw, cw) = row_widths(ui);
         ui.horizontal(|ui| {
-            ui.add_sized([LABEL_W, 18.0], egui::Label::new(RichText::new(format!("Band {} width", i + 1)).color(TEXT_DIM)));
-            ui.add(nih_plug_egui::widgets::ParamSlider::for_param(&p.bands[i].width, c.setter).with_width(170.0));
+            ui.add_sized([lw, 18.0], egui::Label::new(RichText::new(format!("Band {} width", i + 1)).color(TEXT_DIM).size(12.0)).truncate());
+            ui.add(nih_plug_egui::widgets::ParamSlider::for_param(&p.bands[i].width, c.setter).with_width(cw));
         });
+    }
+}
+
+/// Mid/side vectorscope of the last few hundred output samples (vertical = mid, horizontal = side).
+fn vectorscope(ui: &mut Ui, sh: &Shared) {
+    let side = ui.available_width().min(190.0).max(100.0);
+    let (rect, _) = ui.allocate_exact_size(vec2(side, side), Sense::hover());
+    let p = ui.painter_at(rect);
+    p.rect_filled(rect, 4.0, BG0);
+    let ctr = rect.center();
+    let half = side * 0.5 - 8.0;
+    let grid = Stroke::new(1.0_f32, BG2);
+    p.line_segment([Pos2::new(rect.left(), ctr.y), Pos2::new(rect.right(), ctr.y)], grid);
+    p.line_segment([Pos2::new(ctr.x, rect.top()), Pos2::new(ctr.x, rect.bottom())], grid);
+    p.line_segment([Pos2::new(ctr.x - half, ctr.y + half), Pos2::new(ctr.x + half, ctr.y - half)], grid);
+    p.line_segment([Pos2::new(ctr.x - half, ctr.y - half), Pos2::new(ctr.x + half, ctr.y + half)], grid);
+    let font = FontId::proportional(10.0);
+    p.text(Pos2::new(ctr.x + 3.0, rect.top() + 2.0), Align2::LEFT_TOP, "M", font.clone(), TEXT_DIM);
+    p.text(Pos2::new(rect.left() + 3.0, rect.top() + 2.0), Align2::LEFT_TOP, "L", font.clone(), TEXT_DIM);
+    p.text(Pos2::new(rect.right() - 10.0, rect.top() + 2.0), Align2::LEFT_TOP, "R", font, TEXT_DIM);
+    let n = sh.scope_l.len();
+    for i in 0..n {
+        let l = Shared::load(&sh.scope_l[i]);
+        let r = Shared::load(&sh.scope_r[i]);
+        let x = (ctr.x + (r - l) * 0.5 * half).clamp(rect.left() + 1.0, rect.right() - 1.0);
+        let y = (ctr.y - (l + r) * 0.5 * half).clamp(rect.top() + 1.0, rect.bottom() - 1.0);
+        let alpha = (40 + (i * 200) / n.max(1)).min(240) as u8;
+        p.circle_filled(Pos2::new(x, y), 1.3, Color32::from_rgba_unmultiplied(64, 214, 190, alpha));
     }
 }
 
@@ -432,22 +509,44 @@ fn maximizer(ui: &mut Ui, c: &Ctx) {
             toggle(ui, c.setter, &p.true_peak);
         });
     });
-    ui.label(RichText::new("AZ-1 clean · AZ-2 program-dependent · AZ-3 3-band · AZ-4 4-band + saturation · AZ-5 crest-adaptive. Latency is reported to the host.").color(TEXT_DIM).size(11.0));
+    ui.label(RichText::new("AZ-1 clean | AZ-2 program-dependent | AZ-3 3-band | AZ-4 4-band + saturation | AZ-5 crest-adaptive. Latency is reported to the host.").color(TEXT_DIM).size(11.0));
 }
 
 fn pitch(ui: &mut Ui, c: &Ctx) {
     let p = &c.p.pitch;
     combo(ui, c.setter, &p.mode, "pc_mode");
     let full = p.mode.value() == PitchModeP::FullSong;
+    let mix = p.mode.value() == PitchModeP::MixVocal;
+    if !c.p.on.pitch.value() {
+        ui.colored_label(RED, "This module is switched OFF. Tick the check box next to the title (or in the chain list) to hear the correction.");
+    } else if !full {
+        let ratio = Shared::load(&c.sh.pitch_voiced_ratio);
+        if ratio < 0.15 {
+            ui.colored_label(
+                ACCENT2,
+                format!(
+                    "No clear single pitch found yet (voiced {:.0}% of the time). Play a solo vocal or instrument, lower Voicing Confidence, or use 'Vocal in Full Mix' / 'Full Song' for complete mixes.",
+                    ratio * 100.0
+                ),
+            );
+        } else {
+            ui.label(RichText::new(format!("Pitch found in {:.0}% of the audio; current correction {:+.0} cents.", ratio * 100.0, Shared::load(&c.sh.pitch_shift))).size(11.0).color(GREEN));
+        }
+    }
     if !full {
-        ui.label(RichText::new("Place this module first in the chain and use it on a solo vocal or instrument (or a bounced stem). It tracks the pitch, chooses the nearest note of your scale and moves the pitch with a formant-preserving PSOLA engine. Slow retune speed and high \"Preserve Vibrato\" keep it natural; set Retune Speed to 0 for the hard effect.").color(TEXT_DIM).size(11.0));
+        let help = if mix {
+            "Vocal in Full Mix: the lead vocal is estimated from the mix (harmonic + centre + voice-band analysis), tuned on its own, and added back to the rest of the mix. Separation is approximate: keep corrections moderate (Correction Amount 50-80%, slow Retune Speed). For a clean acapella use Vocal mode."
+        } else {
+            "Use this on a solo vocal or instrument (or a bounced stem), first in the chain. It tracks the pitch, chooses the nearest note of your scale and moves the pitch with a formant-preserving PSOLA engine. Slow retune speed and high Preserve Vibrato keep it natural; Retune Speed 0 gives the hard effect."
+        };
+        ui.label(RichText::new(help).color(TEXT_DIM).size(11.0));
         // tuner readout
         let voiced = c.sh.pitch_voiced.load(Ordering::Relaxed);
         let midi = Shared::load(&c.sh.pitch_midi);
         let target = Shared::load(&c.sh.pitch_target);
         let shift = Shared::load(&c.sh.pitch_shift);
         ui.horizontal(|ui| {
-            let (rect, _) = ui.allocate_exact_size(vec2(420.0, 70.0), Sense::hover());
+            let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width().min(520.0).max(300.0), 70.0), Sense::hover());
             let painter = ui.painter_at(rect);
             painter.rect_filled(rect, 6.0, BG0);
             let (txt, sub) = if voiced {
@@ -455,7 +554,7 @@ fn pitch(ui: &mut Ui, c: &Ctx) {
                 let dev = (midi - midi.round()) * 100.0;
                 (note, format!("{:+.0} cents   {:.1} Hz", dev, Shared::load(&c.sh.pitch_f0)))
             } else {
-                ("—".to_string(), "no pitch".to_string())
+                ("--".to_string(), "no pitch".to_string())
             };
             painter.text(Pos2::new(rect.left() + 14.0, rect.top() + 6.0), Align2::LEFT_TOP, txt, FontId::proportional(34.0), if voiced { ACCENT } else { TEXT_DIM });
             painter.text(Pos2::new(rect.left() + 14.0, rect.top() + 48.0), Align2::LEFT_TOP, sub, FontId::proportional(12.0), TEXT_DIM);
@@ -463,7 +562,7 @@ fn pitch(ui: &mut Ui, c: &Ctx) {
                 painter.text(
                     Pos2::new(rect.left() + 170.0, rect.top() + 6.0),
                     Align2::LEFT_TOP,
-                    format!("→ {}", airzone_dsp::pitch::midi_name(target as i32)),
+                    format!("-> {}", airzone_dsp::pitch::midi_name(target as i32)),
                     FontId::proportional(24.0),
                     ACCENT2,
                 );
@@ -481,7 +580,7 @@ fn pitch(ui: &mut Ui, c: &Ctx) {
                 painter.circle_filled(Pos2::new(cx + out * 2.0, y), 5.0, GREEN);
             }
         });
-        ui.label(RichText::new("● red = detected, ● green = after correction (relative to the target note)").color(TEXT_DIM).size(10.0));
+        ui.label(RichText::new("Red dot = detected pitch, green dot = pitch after correction (relative to the target note)").color(TEXT_DIM).size(10.0));
         ui.separator();
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
@@ -489,7 +588,7 @@ fn pitch(ui: &mut Ui, c: &Ctx) {
                 combo(ui, c.setter, &p.scale, "pc_scale");
             });
             ui.vertical(|ui| {
-                if ui.button("🎼 Detect key from audio").clicked() {
+                if ui.button("Detect key from audio").clicked() {
                     let mut kd = airzone_dsp::pitch::KeyDetector::default();
                     for i in 0..12 {
                         kd.hist[i] = Shared::load(&c.sh.key_hist[i]);

@@ -177,6 +177,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <tr><td>Drag a slider</td><td>Change value. Hold <kbd>Shift</kbd> while dragging for fine control.</td></tr>
 <tr><td>Double-click, or <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+click</td><td>Reset to default.</td></tr>
 <tr><td>Click the value text</td><td>Type a value (units are accepted, e.g. <code>-3</code>, <code>1.5k</code>).</td></tr>
+<tr><td>Drag the small triangle in the bottom-right corner</td><td>Resizes the plug-in window. The layout adapts: below about 820 px the chain list becomes a drop-down, columns stack, meters scroll sideways and every panel scrolls, so nothing is ever cut off.</td></tr>
 <tr><td>EQ: drag a node</td><td>Horizontal = frequency, vertical = gain (filters without gain move horizontally only).</td></tr>
 <tr><td>EQ: scroll over a node</td><td>Change the band's Q (bandwidth).</td></tr>
 </table>
@@ -268,6 +269,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <tr><th>Mode</th><th>Use it on</th><th>How it works</th></tr>
 <tr><td><b>Vocal</b></td><td>A solo vocal, acapella or bounced lead-vocal stem</td><td>A YIN tracker follows the fundamental frequency. A slowly-moving <em>centre pitch</em> is derived from it, so natural vibrato and expression are left on top of the correction. The nearest note of your key/scale is chosen with hysteresis (no flickering between notes), and the pitch is moved with formant-preserving time-domain <b>PSOLA</b>, so the voice does not turn into a chipmunk or a robot.</td></tr>
 <tr><td><b>Instrument</b></td><td>A monophonic line: guitar lead, bass, synth, brass, strings</td><td>Same engine with a wider tracking range and slower defaults; suitable for intonation fixes and bass.</td></tr>
+<tr><td><b>Vocal in Full Mix</b></td><td>A finished mix where the lead vocal is slightly off</td><td>The lead vocal is estimated from the mix (harmonic, centre and voice-band analysis), pitch-corrected on its own, and added back to the rest of the mix (mix minus estimated vocal). Separation is approximate, so use moderate settings (50-80 % amount, slow retune). Latency is about 2048 samples plus the PSOLA delay.</td></tr>
 <tr><td><b>Full Song (tuning)</b></td><td>A stereo mix</td><td>Measures the overall tuning of the programme against the 12-tone grid (via phase-accurate spectral peaks) and, if you wish, moves the whole spectrum by a few cents with a phase vocoder (shared FFT pass). It does <em>not</em> retune individual notes in a polyphonic mix — that is not possible without stems.</td></tr>
 </table>
 <h4>Vocal / Instrument controls</h4>
@@ -316,10 +318,20 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <li>Click <b>✔ Apply suggestions</b>. The assistant sets only the parameters it mentions; you can then edit anything. <b>↶ Undo</b> restores the state from before you applied.</li>
 </ol>
 <p>The assistant measures the signal arriving at the plug-in input, so it analyses your <em>unprocessed</em> mix. It suggests: corrective EQ bands (up to five, ±4 dB maximum), a 24 Hz high-pass, gentle dynamics when the crest factor is high, Unlimiter when the mix looks over-limited, sub mono-folding and sub trims, widening or narrowing of the highs, top-end excitement for dull mixes, the Stabilizer for large tonal deviations, and finally Maximizer gain, ceiling and algorithm to reach the loudness target.</p>
+<div class="note"><b>How it decides.</b> Tonal advice only uses the reliable 90 Hz - 12 kHz range and compares the <em>shape</em> of your mix to the genre target after removing the overall level. A global brightness difference becomes one broad high shelf at 3 kHz; only prominent narrow excesses get a bell <em>cut</em> (never a narrow boost). Dynamics decisions use the peak-to-loudness ratio (PLR = true peak minus integrated loudness), the compressor threshold follows your measured loudness, and the sub/bass comparison is made per octave. If fewer than five seconds of signal were heard, it suggests nothing.</div>
 <div class="warn"><b>It guides, you decide.</b> Always check the result by ear, at matched loudness, against a reference track.</div>
 
 <h2 id="presets">8. Presets</h2>
 <p>Pick presets from the menu in the top bar or step through them with ◀ ▶. A preset is a <em>complete</em> snapshot: applying it first returns every parameter to its default (the Bypass switch and your chain order are left alone) and then sets the preset's values. Preset changes are sent through the host, so they are undoable in REAPER and recordable as automation. Hover a preset name for its description.</p>
+<h3>Module presets</h3>
+<p>Every one of the 21 modules also has its <b>own preset menu</b> at the top of its panel (about 130 module presets in total: reverb rooms, delay timings, EQ curves, compressor styles, limiter algorithms, pitch settings and more). A module preset changes <em>only that module</em>: it resets the module's parameters, applies the preset and switches the module on. Use the arrows to step through the list, <b>Reset</b> to return the module to its defaults, and the name box with <b>Save</b> to store your own module presets (<code>Presets/Modules/&lt;module&gt;/</code> in the user folder below).</p>
+<h3>A/B compare, tonal target, vectorscope, matched bypass</h3>
+<ul>
+<li><b>A/B</b> (top bar): two complete settings slots. Click the other letter to store the current state in the active slot and recall the other one; <b>Copy</b> copies the current state into the inactive slot.</li>
+<li><b>Show tonal target</b> (under the spectrum): overlays the tonal balance typical for the chosen genre (amber line), aligned to your output between 100 Hz and 8 kHz.</li>
+<li><b>Vectorscope</b> (Imager panel): mid/side scope of the output. A thin vertical line is mono, a wide cloud is wide, a horizontal line is out of phase.</li>
+<li><b>Loudness-matched bypass</b> (top bar, on by default): when you bypass, the original is level-matched to the processed signal using the momentary loudness difference, so you compare tone and dynamics instead of volume.</li>
+</ul>
 <h3>User presets</h3>
 <p><b>💾 Save</b> stores the current settings as a <code>.azpreset</code> file (readable JSON) under the "User" category:</p>
 <ul>

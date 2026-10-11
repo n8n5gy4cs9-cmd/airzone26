@@ -15,11 +15,39 @@ pub const GREEN: Color32 = Color32::from_rgb(90, 210, 120);
 
 pub const LABEL_W: f32 = 118.0;
 
+/// (label width, control width) that fit the space currently available.
+pub fn row_widths(ui: &Ui) -> (f32, f32) {
+    let avail = ui.available_width();
+    let label = (avail * 0.40).clamp(64.0, LABEL_W);
+    let ctrl = (avail - label - ui.spacing().item_spacing.x - 4.0).clamp(64.0, 230.0);
+    (label, ctrl)
+}
+
 pub fn slider<P: Param>(ui: &mut Ui, setter: &ParamSetter, p: &P) {
+    let (lw, cw) = row_widths(ui);
     ui.horizontal(|ui| {
-        ui.add_sized([LABEL_W, 18.0], egui::Label::new(RichText::new(p.name()).color(TEXT_DIM)));
-        ui.add(ParamSlider::for_param(p, setter).with_width(170.0));
+        ui.add_sized([lw, 18.0], egui::Label::new(RichText::new(p.name()).color(TEXT_DIM).size(12.0)).truncate());
+        ui.add(ParamSlider::for_param(p, setter).with_width(cw));
     });
+}
+
+/// Equal-width columns that stack vertically when there is not enough room.
+pub fn columns<F: FnMut(usize, &mut Ui)>(ui: &mut Ui, n: usize, min_col_width: f32, mut f: F) {
+    if ui.available_width() / n as f32 >= min_col_width {
+        let mut f = &mut f;
+        ui.columns(n, |cols| {
+            for (i, c) in cols.iter_mut().enumerate() {
+                f(i, c);
+            }
+        });
+    } else {
+        for i in 0..n {
+            f(i, ui);
+            if i + 1 < n {
+                ui.separator();
+            }
+        }
+    }
 }
 
 pub fn toggle(ui: &mut Ui, setter: &ParamSetter, p: &BoolParam) {
@@ -34,9 +62,10 @@ pub fn toggle(ui: &mut Ui, setter: &ParamSetter, p: &BoolParam) {
 pub fn combo<E: Enum + PartialEq + Copy + 'static>(ui: &mut Ui, setter: &ParamSetter, p: &EnumParam<E>, id: &str) {
     let names = E::variants();
     let cur = p.value().to_index();
+    let (lw, cw) = row_widths(ui);
     ui.horizontal(|ui| {
-        ui.add_sized([LABEL_W, 18.0], egui::Label::new(RichText::new(p.name()).color(TEXT_DIM)));
-        egui::ComboBox::from_id_salt(id).selected_text(names[cur]).width(150.0).show_ui(ui, |ui| {
+        ui.add_sized([lw, 18.0], egui::Label::new(RichText::new(p.name()).color(TEXT_DIM).size(12.0)).truncate());
+        egui::ComboBox::from_id_salt(id).selected_text(names[cur]).width((cw - 16.0).max(60.0)).show_ui(ui, |ui| {
             for (i, n) in names.iter().enumerate() {
                 if ui.selectable_label(i == cur, *n).clicked() {
                     setter.begin_set_parameter(p);
@@ -76,6 +105,7 @@ fn p_max(p: &FloatParam) -> f32 {
 
 /// Horizontal level bar. `value`/`lo`/`hi` in the same unit (usually dB).
 pub fn bar(ui: &mut Ui, label: &str, text: &str, value: f32, lo: f32, hi: f32, color: Color32, width: f32) {
+    let width = width.min((ui.available_width() - 130.0).max(50.0));
     ui.horizontal(|ui| {
         ui.add_sized([46.0, 14.0], egui::Label::new(RichText::new(label).size(11.0).color(TEXT_DIM)));
         let (rect, _) = ui.allocate_exact_size(egui::vec2(width, 12.0), Sense::hover());
@@ -100,6 +130,45 @@ pub fn gr_meter(ui: &mut Ui, label: &str, gr_db: f32, max_db: f32) {
         ui.label(RichText::new(label).size(10.0).color(TEXT_DIM));
         ui.label(RichText::new(format!("{:.1}", gr_db)).size(10.0).monospace());
     });
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Dir {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+/// A small button with a painted triangle. Drawn with the painter so it never depends on the
+/// glyphs available in the UI font.
+pub fn arrow_button(ui: &mut Ui, dir: Dir) -> egui::Response {
+    let (rect, resp) = ui.allocate_exact_size(egui::vec2(22.0, 20.0), Sense::click());
+    let p = ui.painter();
+    let bg = if resp.is_pointer_button_down_on() {
+        BG0
+    } else if resp.hovered() {
+        Color32::from_rgb(52, 58, 68)
+    } else {
+        BG2
+    };
+    p.rect_filled(rect, 3.0, bg);
+    let c = rect.center();
+    let (a, b) = (5.0_f32, 3.5_f32);
+    let pts = match dir {
+        Dir::Up => vec![Pos2::new(c.x, c.y - a * 0.7), Pos2::new(c.x - a, c.y + b * 0.8), Pos2::new(c.x + a, c.y + b * 0.8)],
+        Dir::Down => vec![Pos2::new(c.x, c.y + a * 0.7), Pos2::new(c.x - a, c.y - b * 0.8), Pos2::new(c.x + a, c.y - b * 0.8)],
+        Dir::Left => vec![Pos2::new(c.x - a * 0.7, c.y), Pos2::new(c.x + b * 0.8, c.y - a), Pos2::new(c.x + b * 0.8, c.y + a)],
+        Dir::Right => vec![Pos2::new(c.x + a * 0.7, c.y), Pos2::new(c.x - b * 0.8, c.y - a), Pos2::new(c.x - b * 0.8, c.y + a)],
+    };
+    p.add(egui::Shape::convex_polygon(pts, if resp.hovered() { ACCENT } else { TEXT_DIM }, Stroke::NONE));
+    resp
+}
+
+/// Small coloured status dot (module on/off indicator).
+pub fn dot(ui: &mut Ui, on: bool) {
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(12.0, 14.0), Sense::hover());
+    ui.painter().circle_filled(rect.center(), 4.0, if on { ACCENT } else { BG2 });
 }
 
 pub fn freq_to_x(f: f32, rect: Rect) -> f32 {

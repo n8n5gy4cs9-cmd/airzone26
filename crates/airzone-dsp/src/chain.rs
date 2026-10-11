@@ -13,6 +13,10 @@ use crate::transient::{Impact, LowEndFocus};
 use crate::unlimiter::Unlimiter;
 use crate::util::{db_to_lin, DelayLine};
 use crate::vintage::{VintageComp, VintageEq, VintageLimiter, VintageTape};
+use crate::vocalfocus::VocalFocus;
+
+/// Number of recent stereo samples kept for the vectorscope display.
+pub const SCOPE_N: usize = 256;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
@@ -155,6 +159,15 @@ pub struct Engine {
     pub pitch: PitchCorrector,
     /// Pitch correction runs as global tuning inside the shared FFT hub.
     pub pitch_full_song: bool,
+    /// Pitch correction of the lead vocal inside a full mix (stem estimate + PSOLA).
+    pub pitch_mix_vocal: bool,
+    pub vocal_focus: VocalFocus,
+    /// Loudness-matched bypass: the bypassed signal is level-matched to the processed one.
+    pub gain_match: bool,
+    match_gain_db: f32,
+    /// Last `SCOPE_N` output samples for the vectorscope.
+    pub scope_l: Vec<f32>,
+    pub scope_r: Vec<f32>,
 
     pub enabled: [bool; MODULE_COUNT],
     pub order: [ModuleId; MODULE_COUNT],
@@ -199,6 +212,12 @@ impl Engine {
             dither: Dither::default(),
             pitch: PitchCorrector::new(sr),
             pitch_full_song: false,
+            pitch_mix_vocal: false,
+            vocal_focus: VocalFocus::new(sr),
+            gain_match: false,
+            match_gain_db: 0.0,
+            scope_l: vec![0.0; SCOPE_N],
+            scope_r: vec![0.0; SCOPE_N],
             enabled: [false; MODULE_COUNT],
             order: default_order(),
             input_gain_db: 0.0,
@@ -240,6 +259,8 @@ impl Engine {
         self.vlimiter.prepare(sr);
         self.maximizer.prepare(sr);
         self.pitch.prepare(sr);
+        self.vocal_focus.prepare(sr);
+        self.match_gain_db = 0.0;
         self.dither.reset();
         self.in_meter = LoudnessMeter::new(sr);
         self.out_meter = LoudnessMeter::new(sr);
@@ -269,6 +290,7 @@ impl Engine {
 
     fn module_latency(&self, m: ModuleId) -> usize {
         match m {
+            ModuleId::PitchCorrect if self.pitch_mix_vocal => self.vocal_focus.latency(),
             ModuleId::PitchCorrect => self.pitch.latency(),
             ModuleId::Maximizer => self.maximizer.latency(),
             ModuleId::VintageTape => self.vtape.latency(),
@@ -308,6 +330,10 @@ impl Engine {
     fn run_module(&mut self, m: ModuleId, l: &mut [f32], r: &mut [f32], hub_done: &mut bool) {
         match m {
             ModuleId::Unlimiter => self.unlimiter.process(l, r),
+            ModuleId::PitchCorrect if self.pitch_mix_vocal => {
+                self.vocal_focus.pitch.settings = self.pitch.settings;
+                self.vocal_focus.process(l, r);
+            }
             ModuleId::PitchCorrect if !self.pitch_full_song => self.pitch.process(l, r),
             ModuleId::StemEq | ModuleId::MatchEq | ModuleId::Stabilizer | ModuleId::SpectralShaper | ModuleId::PitchCorrect => {
                 if !*hub_done {
@@ -374,6 +400,18 @@ impl Engine {
             r[i] *= gout;
         }
         self.dither.process(l, r);
+
+        // loudness-matched bypass: learn how much louder/quieter the chain makes the programme
+        // (only while the processed signal is audible at the output)
+        let mut match_gain = 1.0;
+        if self.gain_match {
+            if self.bypass_mix < 0.001 && self.in_meter.momentary > -60.0 && self.out_meter.momentary > -60.0 {
+                let diff = (self.out_meter.momentary - self.in_meter.momentary).clamp(-12.0, 12.0);
+                self.match_gain_db += (diff - self.match_gain_db) * 0.05;
+            }
+            match_gain = db_to_lin(self.match_gain_db);
+        }
+
         // bypass crossfade (~10 ms)
         let target = if self.bypass { 1.0 } else { 0.0 };
         let step = 1.0 / (0.01 * self.sr);
@@ -384,9 +422,18 @@ impl Engine {
                 self.bypass_mix = (self.bypass_mix - step).max(target);
             }
             if self.bypass_mix > 0.0 {
-                l[i] += (self.scratch_l[i] - l[i]) * self.bypass_mix;
-                r[i] += (self.scratch_r[i] - r[i]) * self.bypass_mix;
+                l[i] += (self.scratch_l[i] * match_gain - l[i]) * self.bypass_mix;
+                r[i] += (self.scratch_r[i] * match_gain - r[i]) * self.bypass_mix;
             }
+        }
+
+        // vectorscope history
+        if n > 0 {
+            let k = n.min(SCOPE_N);
+            self.scope_l.copy_within(k..SCOPE_N, 0);
+            self.scope_r.copy_within(k..SCOPE_N, 0);
+            self.scope_l[SCOPE_N - k..].copy_from_slice(&l[n - k..]);
+            self.scope_r[SCOPE_N - k..].copy_from_slice(&r[n - k..]);
         }
         self.out_meter.process(l, r);
         self.stereo_meter.process(l, r, self.sr);

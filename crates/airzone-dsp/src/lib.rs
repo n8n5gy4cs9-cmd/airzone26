@@ -17,3 +17,4 @@ pub mod transient;
 pub mod unlimiter;
 pub mod util;
 pub mod vintage;
+pub mod vocalfocus;

@@ -140,8 +140,8 @@ pub fn show(ctx: &egui::Context, a: &mut AssistUi, params: &AirZoneParams, sh: &
         }
     }
     let mut open = a.open;
-    egui::Window::new("Master Assistant").open(&mut open).default_width(560.0).show(ctx, |ui| {
-        ui.label(RichText::new("The assistant listens to your programme, measures it and suggests settings. It guides — you decide: review the notes, then apply or undo.").color(TEXT_DIM).size(11.0));
+    egui::Window::new("Master Assistant").open(&mut open).default_width(520.0).vscroll(true).show(ctx, |ui| {
+        ui.label(RichText::new("The assistant listens to your programme, measures it and suggests settings. It guides, you decide: review the notes, then apply or undo.").color(TEXT_DIM).size(11.0));
         ui.separator();
         ui.horizontal(|ui| {
             ui.label("Genre");
@@ -151,7 +151,7 @@ pub fn show(ctx: &egui::Context, a: &mut AssistUi, params: &AirZoneParams, sh: &
                 }
             });
             ui.label("Target");
-            let names = ["Streaming −14 LUFS", "Loud −9 LUFS", "Broadcast −23 LUFS", "Custom"];
+            let names = ["Streaming -14 LUFS", "Loud -9 LUFS", "Broadcast -23 LUFS", "Custom"];
             egui::ComboBox::from_id_salt("as_target").selected_text(names[a.target]).show_ui(ui, |ui| {
                 for (i, n) in names.iter().enumerate() {
                     ui.selectable_value(&mut a.target, i, *n);
@@ -176,7 +176,7 @@ pub fn show(ctx: &egui::Context, a: &mut AssistUi, params: &AirZoneParams, sh: &
         ui.separator();
         ui.horizontal(|ui| {
             if !a.listening {
-                if ui.button("🎧 Start listening").clicked() {
+                if ui.button("Start listening").clicked() {
                     sh.assist_result.lock().take();
                     sh.assist_cmd.store(ASSIST_LISTEN, Ordering::Relaxed);
                     a.listening = true;
@@ -185,7 +185,7 @@ pub fn show(ctx: &egui::Context, a: &mut AssistUi, params: &AirZoneParams, sh: &
                 ui.label("Play the loudest, most representative section of your song.");
             } else {
                 let secs = Shared::load(&sh.assist_seconds);
-                ui.label(format!("Listening… {:.1} s", secs));
+                ui.label(format!("Listening... {:.1} s", secs));
                 if ui.add_enabled(secs > 5.0, egui::Button::new("Analyze now")).clicked() {
                     sh.assist_cmd.store(ASSIST_FINISH, Ordering::Relaxed);
                 }
@@ -199,29 +199,29 @@ pub fn show(ctx: &egui::Context, a: &mut AssistUi, params: &AirZoneParams, sh: &
             ui.separator();
             ui.label(RichText::new("Measurements").strong().color(ACCENT));
             ui.label(format!(
-                "Loudness {:.1} LUFS · LRA {:.1} LU · True peak {:.1} dBTP · Crest {:.1} dB · Width {:.0}% · Correlation {:+.2} · Sub−Bass {:+.1} dB · Analysed {:.0} s",
+                "Loudness {:.1} LUFS | LRA {:.1} LU | True peak {:.1} dBTP | PLR {:.1} dB | Width {:.0}% | Correlation {:+.2} | Sub-Bass {:+.1} dB | Analysed {:.0} s",
                 res.lufs, res.lra, res.true_peak_db, res.crest_db, res.width * 100.0, res.correlation, res.sub_minus_bass_db, res.seconds
             ));
             ui.label(RichText::new("Suggestions").strong().color(ACCENT));
             egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
                 for n in &sug.notes {
-                    ui.label(format!("• {n}"));
+                    ui.label(format!("- {n}"));
                 }
             });
             ui.horizontal(|ui| {
-                if ui.button("✔ Apply suggestions").clicked() {
+                if ui.button("Apply suggestions").clicked() {
                     a.backup = Some(presets::capture("before assistant", "User", params));
                     presets::apply_overlay_gui(&suggestion_values(sug), params, setter);
                     a.applied = true;
                 }
-                if ui.add_enabled(a.backup.is_some(), egui::Button::new("↶ Undo")).clicked() {
+                if ui.add_enabled(a.backup.is_some(), egui::Button::new("Undo")).clicked() {
                     if let Some(b) = a.backup.take() {
                         presets::apply_gui(&b, params, setter);
                         a.applied = false;
                     }
                 }
                 if a.applied {
-                    ui.label(RichText::new("Applied — fine-tune any module afterwards.").color(GREEN));
+                    ui.label(RichText::new("Applied - fine-tune any module afterwards.").color(GREEN));
                 }
             });
         }

@@ -11,6 +11,7 @@ use nih_plug::prelude::*;
 
 pub mod analysis;
 pub mod gui;
+pub mod module_presets;
 pub mod params;
 pub mod presets;
 pub mod shared;
@@ -97,6 +98,7 @@ impl AirZone {
         }
         if sh.clear_key_hist.swap(false, Ordering::Relaxed) {
             e.pitch.key_hist.clear();
+            e.vocal_focus.pitch.key_hist.clear();
         }
         if sh.reset_meters.swap(false, Ordering::Relaxed) {
             e.in_meter.reset();
@@ -144,13 +146,20 @@ impl AirZone {
         for i in 0..3 {
             st(&sh.bass_levels[i], e.bass.meter_db[i]);
         }
-        sh.pitch_voiced.store(e.pitch.meter.voiced, Ordering::Relaxed);
-        st(&sh.pitch_midi, e.pitch.meter.midi);
-        st(&sh.pitch_target, e.pitch.meter.target_note as f32);
-        st(&sh.pitch_shift, e.pitch.meter.shift_cents);
-        st(&sh.pitch_f0, e.pitch.meter.f0);
+        // the vocal-in-mix mode runs its own corrector instance
+        let pc = if e.pitch_mix_vocal { &e.vocal_focus.pitch } else { &e.pitch };
+        sh.pitch_voiced.store(pc.meter.voiced, Ordering::Relaxed);
+        st(&sh.pitch_midi, pc.meter.midi);
+        st(&sh.pitch_target, pc.meter.target_note as f32);
+        st(&sh.pitch_shift, pc.meter.shift_cents);
+        st(&sh.pitch_f0, pc.meter.f0);
+        st(&sh.pitch_voiced_ratio, pc.meter.voiced_ratio);
         for i in 0..12 {
-            st(&sh.key_hist[i], e.pitch.key_hist.hist[i]);
+            st(&sh.key_hist[i], pc.key_hist.hist[i]);
+        }
+        for i in 0..airzone_dsp::chain::SCOPE_N {
+            st(&sh.scope_l[i], e.scope_l[i]);
+            st(&sh.scope_r[i], e.scope_r[i]);
         }
         st(&sh.tune_detected, e.hub.tuning.detected_cents);
         st(&sh.tune_applied, e.hub.tuning.applied_cents);
@@ -313,13 +322,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn dump_param_ids() {
+    fn parameter_ids_are_unique() {
         let p = AirZoneParams::default();
-        let mut out = String::new();
-        for (id, ptr, group) in p.param_map() {
-            let (name, steps) = unsafe { (ptr.name().to_string(), ptr.step_count()) };
-            out.push_str(&format!("{id}\t{group}\t{name}\t{steps:?}\n"));
-        }
-        std::fs::write("/tmp/claude-0/param_ids.tsv", out).unwrap();
+        let mut ids: Vec<String> = p.param_map().into_iter().map(|(id, _, _)| id).collect();
+        let n = ids.len();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), n, "duplicate parameter ids");
     }
 }

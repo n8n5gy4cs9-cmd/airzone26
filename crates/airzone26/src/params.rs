@@ -196,6 +196,8 @@ pub enum PitchModeP {
     Instrument,
     #[name = "Full Song (tuning)"]
     FullSong,
+    #[name = "Vocal in Full Mix"]
+    MixVocal,
 }
 
 #[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
@@ -1050,7 +1052,7 @@ impl Default for PitchP {
             max_shift: lin_param("Max Correction (cents)", 200.0, 20.0, 400.0),
             min_hz: hz_param("Lowest Pitch", 70.0, 50.0, 500.0),
             max_hz: hz_param("Highest Pitch", 1000.0, 200.0, 1500.0),
-            confidence: lin_param("Voicing Confidence", 0.75, 0.3, 0.95),
+            confidence: lin_param("Voicing Confidence", 0.6, 0.3, 0.95),
             a4: lin_param("A4 Reference (Hz)", 440.0, 415.0, 466.0),
             tune_auto: on_param("Auto Detect Tuning", true),
             tune_manual: lin_param("Manual Tuning (cents)", 0.0, -100.0, 100.0),
@@ -1205,6 +1207,8 @@ pub struct AirZoneParams {
     pub output_gain: FloatParam,
     #[id = "dither"]
     pub dither: EnumParam<DitherP>,
+    #[id = "gmatch"]
+    pub gain_match: BoolParam,
 
     #[nested(group = "Modules")]
     pub on: Switches,
@@ -1255,7 +1259,7 @@ pub struct AirZoneParams {
 impl Default for AirZoneParams {
     fn default() -> Self {
         Self {
-            editor_state: EguiState::from_size(1180, 760),
+            editor_state: EguiState::from_size(1040, 680),
             order: Arc::new(RwLock::new(airzone_dsp::chain::default_order().iter().map(|m| m.index() as u8).collect())),
             match_data: Arc::new(Mutex::new(MatchData::default())),
             ui_prefs: Arc::new(Mutex::new(UiPrefs::default())),
@@ -1263,6 +1267,7 @@ impl Default for AirZoneParams {
             input_gain: db_param("Input Gain", 0.0, -24.0, 24.0),
             output_gain: db_param("Output Gain", 0.0, -24.0, 12.0),
             dither: EnumParam::new("Dither", DitherP::Off),
+            gain_match: BoolParam::new("Loudness-Matched Bypass", true),
             on: Switches::default(),
             unlimiter: UnlimiterP::default(),
             stem: StemP::default(),
