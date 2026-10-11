@@ -11,3 +11,4 @@ pub mod stereo;
 pub mod transient;
 pub mod unlimiter;
 pub mod util;
+pub mod vintage;
