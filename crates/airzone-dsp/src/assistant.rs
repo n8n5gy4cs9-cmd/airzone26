@@ -174,6 +174,10 @@ impl Analyzer {
         *self = Self::new(self.sr);
     }
 
+    pub fn profile(&self) -> &SpectrumProfile {
+        &self.profile
+    }
+
     pub fn seconds(&self) -> f32 {
         self.samples as f32 / self.sr
     }

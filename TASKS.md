@@ -24,7 +24,7 @@ _Updated after every task; each task is committed to `main`._
 - ✅ T16 Mastering chain engine (module order, latency, bypass)
 
 ## Plugin
-- ⬜ T17 nih-plug parameters for every module + mapping to engine
+- ✅ T17 nih-plug parameters for every module + mapping to engine
 - ⬜ T18 Presets: 60+ factory presets (embedded JSON) + user preset save/load
 - ⬜ T19 Preset validation tests (params exist, render finite, ceiling respected)
 - ⬜ T20 egui GUI: module rail, editors, spectrum, meters, preset browser
@@ -35,3 +35,8 @@ _Updated after every task; each task is committed to `main`._
 - ⬜ T23 Full HTML manual (`docs/manual.html`)
 - ⬜ T24 README, licensing/trademark notes
 - ⬜ T25 Verify CI green on all platforms, fix issues
+
+## Optional (do last)
+- ⬜ T26 Pitch Correction section: natural-sounding auto-tune for vocals, single instruments or full songs
+  (YIN/pitch tracking, scale/key detection, soft retune speed + humanize, formant-preserving shift,
+  polyphonic/full-mix mode via gentle spectral correction, bypass-safe for non-pitched material)
