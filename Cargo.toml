@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["crates/airzone-dsp", "crates/airzone26", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+authors = ["AirZone26"]
+
+[profile.release]
+lto = "thin"
+opt-level = 3
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = "none"
