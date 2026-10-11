@@ -27,8 +27,8 @@ _Updated after every task; each task is committed to `main`._
 - ✅ T17 nih-plug parameters for every module + mapping to engine
 - ✅ T18 Presets: 60+ factory presets (embedded JSON) + user preset save/load
 - ✅ T19 Preset validation tests (params exist, render finite, ceiling respected)
-- ⬜ T20 egui GUI: module rail, editors, spectrum, meters, preset browser
-- ⬜ T21 Reference-track loading (WAV) for Match EQ / comparison
+- ✅ T20 egui GUI: module rail, editors, spectrum, meters, preset browser
+- ✅ T21 Reference-track loading (WAV) for Match EQ / comparison
 
 ## Build & docs
 - ⬜ T22 GitHub Actions: Windows x64 (10/11) + macOS arm64 (M1 Max) VST3/CLAP, artifacts

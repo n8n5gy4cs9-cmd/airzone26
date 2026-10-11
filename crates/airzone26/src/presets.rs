@@ -592,6 +592,21 @@ pub fn apply_gui(preset: &Preset, params: &AirZoneParams, setter: &ParamSetter) 
     }
 }
 
+/// Set only the listed parameters (plain values) through the host; everything else is untouched.
+pub fn apply_overlay_gui(values: &[(String, f32)], params: &AirZoneParams, setter: &ParamSetter) {
+    let map = param_lookup(params);
+    for (id, plain) in values {
+        if let Some(ptr) = map.get(id) {
+            let norm = unsafe { ptr.preview_normalized(*plain) }.clamp(0.0, 1.0);
+            unsafe {
+                setter.raw_context.raw_begin_set_parameter(*ptr);
+                setter.raw_context.raw_set_parameter_normalized(*ptr, norm);
+                setter.raw_context.raw_end_set_parameter(*ptr);
+            }
+        }
+    }
+}
+
 /// Capture the current state as a user preset.
 pub fn capture(name: &str, category: &str, params: &AirZoneParams) -> Preset {
     let values = params
