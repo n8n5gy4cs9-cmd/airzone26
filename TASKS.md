@@ -39,6 +39,8 @@ _Updated after every task; each task is committed to `main`._
   - ✅ `cargo check` passes for `x86_64-pc-windows-msvc` and `aarch64-apple-darwin` (type-check only; linking needs the real OS)
   - ⚠️ GitHub Actions jobs fail within ~3 s with no steps executed (runner never starts) – looks like an account/billing/Actions-settings issue, not a code issue. Needs your attention in the repo's Settings → Actions / billing, then re-run the workflow.
 
+- ✅ T27 `build.sh` – builds Windows (native or cross via cargo-xwin) and macOS arm64 (+ optional universal) bundles into dist/
+
 ## Optional (do last)
 - ✅ T26 Pitch Correction section: natural-sounding auto-tune for vocals, single instruments or full songs
   - ✅ T26a YIN pitch tracker (accurate to a few cents) + tests

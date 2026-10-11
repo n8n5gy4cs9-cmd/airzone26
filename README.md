@@ -14,6 +14,7 @@ Low End Focus · Dynamics (3-band) · Vintage Comp · Vintage EQ · Vintage Tape
 Delay · Reverb · Vintage Limiter · Maximizer (5 algorithms, true-peak) · Pitch Correction (vocal / instrument / full-song tuning)
 
 ## Build
+`./build.sh` builds the Windows x64 and macOS arm64 bundles into `dist/` (run `./build.sh --help`; macOS bundles need a Mac).
 ```
 cargo test --workspace
 cargo xtask bundle airzone26 --release     # -> target/bundled/AirZone 26.vst3 / .clap

@@ -2,3 +2,5 @@ target/
 *.vst3
 *.clap
 Cargo.lock.bak
+
+dist/
