@@ -51,6 +51,7 @@ pub fn show(ui: &mut Ui, m: ModuleId, c: &Ctx, st: &mut State) {
         ModuleId::Reverb => reverb(ui, c),
         ModuleId::VintageLimiter => vlim(ui, c),
         ModuleId::Maximizer => maximizer(ui, c),
+        ModuleId::PitchCorrect => pitch(ui, c),
     }
 }
 
@@ -76,6 +77,7 @@ pub fn description(m: ModuleId) -> &'static str {
         ModuleId::Reverb => "Compact algorithmic reverb for glue and ambience.",
         ModuleId::VintageLimiter => "Fast, coloured peak limiter.",
         ModuleId::Maximizer => "Lookahead true-peak limiter with 5 algorithms.",
+        ModuleId::PitchCorrect => "Natural pitch correction: vocals, instruments, or whole-song tuning.",
     }
 }
 
@@ -431,4 +433,101 @@ fn maximizer(ui: &mut Ui, c: &Ctx) {
         });
     });
     ui.label(RichText::new("AZ-1 clean · AZ-2 program-dependent · AZ-3 3-band · AZ-4 4-band + saturation · AZ-5 crest-adaptive. Latency is reported to the host.").color(TEXT_DIM).size(11.0));
+}
+
+fn pitch(ui: &mut Ui, c: &Ctx) {
+    let p = &c.p.pitch;
+    combo(ui, c.setter, &p.mode, "pc_mode");
+    let full = p.mode.value() == PitchModeP::FullSong;
+    if !full {
+        ui.label(RichText::new("Place this module first in the chain and use it on a solo vocal or instrument (or a bounced stem). It tracks the pitch, chooses the nearest note of your scale and moves the pitch with a formant-preserving PSOLA engine. Slow retune speed and high \"Preserve Vibrato\" keep it natural; set Retune Speed to 0 for the hard effect.").color(TEXT_DIM).size(11.0));
+        // tuner readout
+        let voiced = c.sh.pitch_voiced.load(Ordering::Relaxed);
+        let midi = Shared::load(&c.sh.pitch_midi);
+        let target = Shared::load(&c.sh.pitch_target);
+        let shift = Shared::load(&c.sh.pitch_shift);
+        ui.horizontal(|ui| {
+            let (rect, _) = ui.allocate_exact_size(vec2(420.0, 70.0), Sense::hover());
+            let painter = ui.painter_at(rect);
+            painter.rect_filled(rect, 6.0, BG0);
+            let (txt, sub) = if voiced {
+                let note = airzone_dsp::pitch::midi_name(midi.round() as i32);
+                let dev = (midi - midi.round()) * 100.0;
+                (note, format!("{:+.0} cents   {:.1} Hz", dev, Shared::load(&c.sh.pitch_f0)))
+            } else {
+                ("—".to_string(), "no pitch".to_string())
+            };
+            painter.text(Pos2::new(rect.left() + 14.0, rect.top() + 6.0), Align2::LEFT_TOP, txt, FontId::proportional(34.0), if voiced { ACCENT } else { TEXT_DIM });
+            painter.text(Pos2::new(rect.left() + 14.0, rect.top() + 48.0), Align2::LEFT_TOP, sub, FontId::proportional(12.0), TEXT_DIM);
+            if voiced {
+                painter.text(
+                    Pos2::new(rect.left() + 170.0, rect.top() + 6.0),
+                    Align2::LEFT_TOP,
+                    format!("→ {}", airzone_dsp::pitch::midi_name(target as i32)),
+                    FontId::proportional(24.0),
+                    ACCENT2,
+                );
+                painter.text(Pos2::new(rect.left() + 170.0, rect.top() + 40.0), Align2::LEFT_TOP, format!("shift {:+.0} cents", shift), FontId::proportional(12.0), TEXT_DIM);
+            }
+            // cents needle
+            let cx = rect.right() - 120.0;
+            let y = rect.center().y;
+            painter.line_segment([Pos2::new(cx - 100.0, y), Pos2::new(cx + 100.0, y)], Stroke::new(1.0_f32, TEXT_DIM));
+            painter.line_segment([Pos2::new(cx, y - 12.0), Pos2::new(cx, y + 12.0)], Stroke::new(1.0_f32, TEXT_DIM));
+            if voiced {
+                let dev = ((midi - target) * 100.0).clamp(-50.0, 50.0);
+                painter.circle_filled(Pos2::new(cx + dev * 2.0, y), 6.0, RED);
+                let out = (dev + shift).clamp(-50.0, 50.0);
+                painter.circle_filled(Pos2::new(cx + out * 2.0, y), 5.0, GREEN);
+            }
+        });
+        ui.label(RichText::new("● red = detected, ● green = after correction (relative to the target note)").color(TEXT_DIM).size(10.0));
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.vertical(|ui| {
+                combo(ui, c.setter, &p.root, "pc_root");
+                combo(ui, c.setter, &p.scale, "pc_scale");
+            });
+            ui.vertical(|ui| {
+                if ui.button("🎼 Detect key from audio").clicked() {
+                    let mut kd = airzone_dsp::pitch::KeyDetector::default();
+                    for i in 0..12 {
+                        kd.hist[i] = Shared::load(&c.sh.key_hist[i]);
+                    }
+                    if let Some((key, corr)) = kd.best() {
+                        c.setter.begin_set_parameter(&p.root);
+                        c.setter.set_parameter(&p.root, NoteP::from_index(key.root as usize));
+                        c.setter.end_set_parameter(&p.root);
+                        c.setter.begin_set_parameter(&p.scale);
+                        c.setter.set_parameter(&p.scale, if key.scale == airzone_dsp::pitch::ScaleKind::Major { ScaleP::Major } else { ScaleP::Minor });
+                        c.setter.end_set_parameter(&p.scale);
+                        let _ = corr;
+                    }
+                }
+                if ui.button("Clear key memory").clicked() {
+                    c.sh.clear_key_hist.store(true, Ordering::Relaxed);
+                }
+                let mut kd = airzone_dsp::pitch::KeyDetector::default();
+                for i in 0..12 {
+                    kd.hist[i] = Shared::load(&c.sh.key_hist[i]);
+                }
+                match kd.best() {
+                    Some((k, r)) => ui.label(RichText::new(format!("Likely key: {} {} (r = {:.2})", airzone_dsp::pitch::NOTE_NAMES[k.root as usize], if k.scale == airzone_dsp::pitch::ScaleKind::Major { "major" } else { "minor" }, r)).size(11.0)),
+                    None => ui.label(RichText::new("Play some singing/playing to learn the key.").color(TEXT_DIM).size(11.0)),
+                };
+            });
+        });
+        sl!(ui, c.setter, p.retune, p.amount, p.preserve, p.tolerance, p.max_shift, p.min_hz, p.max_hz, p.confidence, p.a4);
+    } else {
+        ui.label(RichText::new("Full-song mode corrects the overall tuning of a mixed track (for example a recording that sits 20 cents sharp, or a 432 Hz master you want at 440 Hz). It measures where the music sits against the 12-tone grid and gently shifts the whole spectrum - it does not retune individual notes. For single voices or instruments switch to Vocal or Instrument mode.").color(TEXT_DIM).size(11.0));
+        let det = Shared::load(&c.sh.tune_detected);
+        let app = Shared::load(&c.sh.tune_applied);
+        let conf = Shared::load(&c.sh.tune_conf);
+        bar(ui, "Detected", &format!("{:+.1} cents vs A=440", det), (det + 50.0) / 100.0, 0.0, 1.0, ACCENT, 260.0);
+        bar(ui, "Applied", &format!("{:+.1} cents", app), (app + 100.0) / 200.0, 0.0, 1.0, ACCENT2, 260.0);
+        bar(ui, "Confid.", &format!("{:.0}%", conf * 100.0), conf, 0.0, 1.0, GREEN, 260.0);
+        toggle(ui, c.setter, &p.tune_auto);
+        sl!(ui, c.setter, p.tune_target, p.tune_amount, p.tune_manual);
+        ui.label(RichText::new("Auto: corrects slowly (about 10 cents per second) so there is no audible pitch movement. Manual: applies the Manual Tuning offset directly.").color(TEXT_DIM).size(11.0));
+    }
 }

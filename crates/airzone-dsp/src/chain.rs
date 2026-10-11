@@ -5,6 +5,7 @@ use crate::fx::{Reverb, StereoDelay};
 use crate::dynamics::MultibandDynamics;
 use crate::maximizer::{Dither, Maximizer};
 use crate::meter::{LoudnessMeter, SpectrumAnalyzer, StereoMeter};
+use crate::pitch::PitchCorrector;
 use crate::saturation::Exciter;
 use crate::spectral::{Capture, SpectralHub};
 use crate::stereo::{BassControl, Imager};
@@ -36,9 +37,10 @@ pub enum ModuleId {
     Reverb,
     VintageLimiter,
     Maximizer,
+    PitchCorrect,
 }
 
-pub const MODULE_COUNT: usize = 20;
+pub const MODULE_COUNT: usize = 21;
 
 impl ModuleId {
     pub const ALL: [ModuleId; MODULE_COUNT] = [
@@ -62,6 +64,7 @@ impl ModuleId {
         ModuleId::Reverb,
         ModuleId::VintageLimiter,
         ModuleId::Maximizer,
+        ModuleId::PitchCorrect,
     ];
 
     pub fn index(self) -> usize {
@@ -92,6 +95,7 @@ impl ModuleId {
             ModuleId::Reverb => "Reverb",
             ModuleId::VintageLimiter => "Vintage Limiter",
             ModuleId::Maximizer => "Maximizer",
+            ModuleId::PitchCorrect => "Pitch Correction",
         }
     }
     pub fn is_spectral(self) -> bool {
@@ -99,9 +103,12 @@ impl ModuleId {
     }
 }
 
-/// Default signal-flow order (the same as the `ModuleId` declaration order).
+/// Default signal-flow order: pitch correction first, then the `ModuleId` declaration order.
 pub fn default_order() -> [ModuleId; MODULE_COUNT] {
-    ModuleId::ALL
+    let mut o = ModuleId::ALL;
+    // Pitch correction works best first in the chain.
+    o.rotate_right(1);
+    o
 }
 
 /// Validate and repair an order array so it is a permutation of all modules.
@@ -145,6 +152,9 @@ pub struct Engine {
     pub vlimiter: VintageLimiter,
     pub maximizer: Maximizer,
     pub dither: Dither,
+    pub pitch: PitchCorrector,
+    /// Pitch correction runs as global tuning inside the shared FFT hub.
+    pub pitch_full_song: bool,
 
     pub enabled: [bool; MODULE_COUNT],
     pub order: [ModuleId; MODULE_COUNT],
@@ -187,6 +197,8 @@ impl Engine {
             vlimiter: VintageLimiter::default(),
             maximizer: Maximizer::default(),
             dither: Dither::default(),
+            pitch: PitchCorrector::new(sr),
+            pitch_full_song: false,
             enabled: [false; MODULE_COUNT],
             order: default_order(),
             input_gain_db: 0.0,
@@ -227,6 +239,7 @@ impl Engine {
         self.reverb.prepare(sr);
         self.vlimiter.prepare(sr);
         self.maximizer.prepare(sr);
+        self.pitch.prepare(sr);
         self.dither.reset();
         self.in_meter = LoudnessMeter::new(sr);
         self.out_meter = LoudnessMeter::new(sr);
@@ -250,8 +263,13 @@ impl Engine {
         }
     }
 
+    fn hub_member(&self, m: ModuleId) -> bool {
+        m.is_spectral() || (m == ModuleId::PitchCorrect && self.pitch_full_song)
+    }
+
     fn module_latency(&self, m: ModuleId) -> usize {
         match m {
+            ModuleId::PitchCorrect => self.pitch.latency(),
             ModuleId::Maximizer => self.maximizer.latency(),
             ModuleId::VintageTape => self.vtape.latency(),
             _ => 0,
@@ -265,7 +283,7 @@ impl Engine {
             if !self.module_enabled(m) {
                 continue;
             }
-            if m.is_spectral() {
+            if self.hub_member(m) {
                 spectral = true;
             } else {
                 total += self.module_latency(m);
@@ -290,9 +308,11 @@ impl Engine {
     fn run_module(&mut self, m: ModuleId, l: &mut [f32], r: &mut [f32], hub_done: &mut bool) {
         match m {
             ModuleId::Unlimiter => self.unlimiter.process(l, r),
-            ModuleId::StemEq | ModuleId::MatchEq | ModuleId::Stabilizer | ModuleId::SpectralShaper => {
+            ModuleId::PitchCorrect if !self.pitch_full_song => self.pitch.process(l, r),
+            ModuleId::StemEq | ModuleId::MatchEq | ModuleId::Stabilizer | ModuleId::SpectralShaper | ModuleId::PitchCorrect => {
                 if !*hub_done {
                     *hub_done = true;
+                    self.hub.tuning.enabled = self.enabled[ModuleId::PitchCorrect.index()] && self.pitch_full_song;
                     self.hub.stem.enabled = self.enabled[ModuleId::StemEq.index()];
                     self.hub.match_eq.enabled = self.enabled[ModuleId::MatchEq.index()];
                     self.hub.stabilizer.enabled = self.enabled[ModuleId::Stabilizer.index()];
@@ -346,6 +366,7 @@ impl Engine {
             if !self.module_enabled(m) {
                 continue;
             }
+            // a spectral module that is "enabled" only through the hub flag must still reach the hub
             self.run_module(m, l, r, &mut hub_done);
         }
         for i in 0..n {

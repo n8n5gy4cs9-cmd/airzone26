@@ -81,8 +81,9 @@ details table.t{margin:0;border-left:0;border-right:0}
   <a class="sub" href="#m-img">Imager</a>
   <a class="sub" href="#m-delay">Delay</a>
   <a class="sub" href="#m-rev">Reverb</a>
-  <div class="grp">Rebalance</div>
+  <div class="grp">Rebalance &amp; pitch</div>
   <a class="sub" href="#m-stem">Stem EQ</a>
+  <a class="sub" href="#m-pitch">Pitch Correction</a>
   <div class="grp">Output</div>
   <a class="sub" href="#m-vlim">Vintage Limiter</a>
   <a class="sub" href="#m-max">Maximizer</a>
@@ -105,14 +106,14 @@ details table.t{margin:0;border-left:0;border-right:0}
 </div>
 
 <h2 id="intro">1. Introduction</h2>
-<p>AirZone 26 is a mastering plug-in written in Rust. It puts twenty processing modules, a metering section, a <b>Master Assistant</b> and 68 factory presets behind a single plug-in window, so you can take a finished stereo mix to a release-ready master on the master track of one REAPER project.</p>
+<p>AirZone 26 is a mastering plug-in written in Rust. It puts twenty-one processing modules, a metering section, a <b>Master Assistant</b> and 82 factory presets behind a single plug-in window, so you can take a finished stereo mix to a release-ready master on the master track of one REAPER project.</p>
 <div class="cards">
-  <div class="card"><b>20 modules</b>EQ, dynamic EQ, match EQ, stabilizer, spectral shaper, stem EQ, multiband dynamics, exciter, imager, bass control, transient shaping, vintage comp/EQ/tape/limiter, delay, reverb, unlimiter and a 5-algorithm maximizer.</div>
+  <div class="card"><b>21 modules</b>Pitch correction, EQ, dynamic EQ, match EQ, stabilizer, spectral shaper, stem EQ, multiband dynamics, exciter, imager, bass control, transient shaping, vintage comp/EQ/tape/limiter, delay, reverb, unlimiter and a 5-algorithm maximizer.</div>
   <div class="card"><b>Reorderable chain</b>Drag modules up and down; the order is saved with your project.</div>
   <div class="card"><b>Master Assistant</b>Listens to your song, measures it, and suggests explained settings for a genre and loudness target. Fully undoable.</div>
-  <div class="card"><b>68 presets</b>Genre masters, loudness targets, problem solvers, stem rebalances, vintage and signature chains — plus your own user presets.</div>
+  <div class="card"><b>82 presets</b>Genre masters, loudness targets, problem solvers, stem rebalances, vintage and signature chains — plus your own user presets.</div>
   <div class="card"><b>True-peak safe</b>Lookahead true-peak limiting, EBU R128 / ITU BS.1770 loudness (momentary, short-term, integrated, LRA).</div>
-  <div class="card"><b>283 automatable parameters</b>Everything is automatable from REAPER; presets set whole chains at once.</div>
+  <div class="card"><b>300 automatable parameters</b>Everything is automatable from REAPER; presets set whole chains at once.</div>
 </div>
 <div class="note"><b>Honest scope note.</b> AirZone 26 is an independent project <em>inspired by</em> the workflow of modern all-in-one mastering suites. All algorithms are original. In particular, <b>Stem EQ</b> is a signal-processing approximation (harmonic/percussive and stereo-centre analysis) and not a neural-network separator, and the <b>Unlimiter</b> is an upward expander, not a trained declipper. Both are excellent for corrections of a few dB; they will not perform miracles on extreme material.</div>
 
@@ -165,7 +166,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <table class="t">
 <tr><th>Area</th><th>What it does</th></tr>
 <tr><td><b>Top bar</b></td><td>Preset browser (◀ ▶ step through presets, the menu lists them by category, hover for a description), <b>Save</b>, <b>Master Assistant</b>, global <b>Bypass</b>, input and output gain, and <b>Dither</b> selection.</td></tr>
-<tr><td><b>Left rail – signal chain</b></td><td>All 20 modules in processing order from top to bottom. The check box enables a module, clicking the name selects it for editing, ▲ ▼ move it in the chain. Modules tagged <code>·fft</code> share one FFT pass (see <a href="#chain">Signal chain</a>). The footer shows the current total latency.</td></tr>
+<tr><td><b>Left rail – signal chain</b></td><td>All 21 modules in processing order from top to bottom. The check box enables a module, clicking the name selects it for editing, ▲ ▼ move it in the chain. Modules tagged <code>·fft</code> share one FFT pass (see <a href="#chain">Signal chain</a>). The footer shows the current total latency.</td></tr>
 <tr><td><b>Centre – analyzer</b></td><td>Live spectrum of the chain input (grey) and output (teal). The <em>slope compensation</em> option adds +4.5 dB/octave so typical music appears flat, making tonal imbalances easy to see.</td></tr>
 <tr><td><b>Centre – module editor</b></td><td>Controls of the selected module, with module-specific displays (EQ curve, correction curves, gain-reduction meters …).</td></tr>
 <tr><td><b>Bottom bar</b></td><td>Loudness (momentary / short-term / integrated), true peak, stereo correlation, LRA, input integrated loudness, and gain-reduction meters for the Maximizer, the three Dynamics bands and the Vintage Comp.</td></tr>
@@ -184,10 +185,10 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <p>Audio enters through <b>Input gain</b>, passes through every <em>enabled</em> module in the order shown in the rail, goes through <b>Output gain</b> and the optional <b>Dither</b>, and leaves. A disabled module costs nothing and adds no latency.</p>
 <p>Default order:</p>
 <div class="flow">
-<span>Unlimiter</span><span class="fft">Stem EQ</span><span class="fft">Match EQ</span><span>Equalizer</span><span>Dynamic EQ</span><span class="fft">Stabilizer</span><span class="fft">Spectral Shaper</span><span>Bass Control</span><span>Low End Focus</span><span>Dynamics</span><span>Vintage Comp</span><span>Vintage EQ</span><span>Vintage Tape</span><span>Exciter</span><span>Impact</span><span>Imager</span><span>Delay</span><span>Reverb</span><span>Vintage Limiter</span><span>Maximizer</span>
+<span>Pitch Correction</span><span>Unlimiter</span><span class="fft">Stem EQ</span><span class="fft">Match EQ</span><span>Equalizer</span><span>Dynamic EQ</span><span class="fft">Stabilizer</span><span class="fft">Spectral Shaper</span><span>Bass Control</span><span>Low End Focus</span><span>Dynamics</span><span>Vintage Comp</span><span>Vintage EQ</span><span>Vintage Tape</span><span>Exciter</span><span>Impact</span><span>Imager</span><span>Delay</span><span>Reverb</span><span>Vintage Limiter</span><span>Maximizer</span>
 </div>
 <h3>The FFT group</h3>
-<p><b>Stem EQ, Match EQ, Stabilizer</b> and <b>Spectral Shaper</b> work in the frequency domain (2048-point STFT, 75 % overlap). They share a single analysis/synthesis pass so enabling all four costs the same latency as enabling one (2048 samples). The shared pass runs at the position of the <em>first enabled</em> FFT module in the chain, and the enabled modules inside it always run in the order Match EQ → Stem EQ → Stabilizer → Spectral Shaper.</p>
+<p><b>Stem EQ, Match EQ, Stabilizer</b> and <b>Spectral Shaper</b> (and <b>Pitch Correction</b> when set to <em>Full Song</em> mode) work in the frequency domain (2048-point STFT, 75 % overlap). They share a single analysis/synthesis pass so enabling all four costs the same latency as enabling one (2048 samples). The shared pass runs at the position of the <em>first enabled</em> FFT module in the chain, and the enabled modules inside it always run in the order Match EQ → Stem EQ → Stabilizer → Spectral Shaper → Full-Song tuning.</p>
 <h3>Order guidelines</h3>
 <ul>
 <li><b>Corrective first</b> (Unlimiter, EQ, Dynamic EQ, Stabilizer) then <b>dynamics</b>, then <b>colour</b>, then <b>width</b>, then <b>limiting last</b>.</li>
@@ -261,6 +262,32 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <h3 id="m-stem">Stem EQ</h3>
 <p>Estimates four stems — <b>Bass, Drums, Vocals, Other</b> — and lets you change the level (±12 dB) and tone (±6 dB tilt) of each without opening the mix. Stems are estimated from harmonic-vs-percussive structure and stereo-centre energy, so separation is approximate. <b>Focus</b> sets how hard the masks are (higher = more separation, more artefacts). <b>Solo</b> lets you audition what the algorithm believes each stem to be. For best results keep moves under ±4 dB.</p>
 
+<h3 id="m-pitch">Pitch Correction</h3>
+<p>Natural-sounding automatic pitch correction in three modes. It is <b>off by default</b> and sits first in the chain.</p>
+<table class="t">
+<tr><th>Mode</th><th>Use it on</th><th>How it works</th></tr>
+<tr><td><b>Vocal</b></td><td>A solo vocal, acapella or bounced lead-vocal stem</td><td>A YIN tracker follows the fundamental frequency. A slowly-moving <em>centre pitch</em> is derived from it, so natural vibrato and expression are left on top of the correction. The nearest note of your key/scale is chosen with hysteresis (no flickering between notes), and the pitch is moved with formant-preserving time-domain <b>PSOLA</b>, so the voice does not turn into a chipmunk or a robot.</td></tr>
+<tr><td><b>Instrument</b></td><td>A monophonic line: guitar lead, bass, synth, brass, strings</td><td>Same engine with a wider tracking range and slower defaults; suitable for intonation fixes and bass.</td></tr>
+<tr><td><b>Full Song (tuning)</b></td><td>A stereo mix</td><td>Measures the overall tuning of the programme against the 12-tone grid (via phase-accurate spectral peaks) and, if you wish, moves the whole spectrum by a few cents with a phase vocoder (shared FFT pass). It does <em>not</em> retune individual notes in a polyphonic mix — that is not possible without stems.</td></tr>
+</table>
+<h4>Vocal / Instrument controls</h4>
+<ul>
+<li><b>Key / Scale</b> – Chromatic (any semitone), Major, Natural/Harmonic Minor, Major/Minor Pentatonic, Blues, Dorian, Mixolydian. <b>🎼 Detect key from audio</b> reads a pitch-class histogram collected while the audio plays (Krumhansl-Schmuckler) and sets Key and Scale to Major/Minor for you. Use <em>Clear key memory</em> before analysing a different song.</li>
+<li><b>Retune Speed</b> – how long it takes to move to the target note. 0 ms = hard, robotic "effect" tuning; 40 ms = tight modern pop; 90–150 ms = natural; 200+ ms = very gentle.</li>
+<li><b>Correction Amount</b> – scales the correction (50 % moves notes half-way to the target).</li>
+<li><b>Preserve Vibrato</b> – at 100 % only the slow pitch centre is corrected and all vibrato and slides are kept; at 0 % the pitch is flattened onto the target.</li>
+<li><b>Tolerance</b> – deviations smaller than this (in cents) are left untouched, which keeps a natural, slightly imperfect feel.</li>
+<li><b>Max Correction</b> – the largest shift ever applied. Keep ≤ 200 cents for natural results.</li>
+<li><b>Lowest / Highest Pitch</b> and <b>Voicing Confidence</b> – the range in which pitch is trusted. Breaths, consonants and noise are never retuned; the correction fades out within 20 ms when no pitch is found.</li>
+<li><b>A4 Reference</b> – the tuning of your song (415–466 Hz).</li>
+</ul>
+<p>The big readout shows the detected note and cents, the target note, and the applied shift; the needle shows detected (red) versus corrected (green) pitch around the target note.</p>
+<h4>Full Song controls</h4>
+<ul>
+<li><b>Auto Detect Tuning</b> – corrects slowly (about 10 cents per second) toward <b>Target A4</b>, only when the detection confidence is high; <b>Tuning Amount</b> scales it. <b>Manual Tuning</b> applies a fixed offset instead (e.g. +31.8 cents converts 432 Hz to 440 Hz).</li>
+</ul>
+<div class="warn"><b>Limits.</b> Monophonic modes expect one pitch at a time; running them on a full mix or on chords will not work. Very large corrections (more than about 3 semitones) always sound processed with any pitch shifter. Latency is about 70 ms in Vocal/Instrument mode (reported to the host).</div>
+
 <h3 id="m-vlim">Vintage Limiter</h3>
 <p>A fast, coloured peak limiter with selectable <b>Input</b> drive, <b>Attack</b>, <b>Release</b> and <b>Character</b> (saturation). Use it as a tone-shaping stage <em>before</em> the Maximizer; it does not guarantee the ceiling.</p>
 
@@ -300,7 +327,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <li>macOS: <code>~/Library/Application Support/AirZone26/Presets</code></li>
 </ul>
 <p>Copy those files to share presets. REAPER's own FX preset system and project states also store the full plug-in state.</p>
-<h3>Factory preset catalogue (68 presets)</h3>
+<h3>Factory preset catalogue (82 presets)</h3>
 <h3>Utility</h3>
 <table class="t"><tr><th>Preset</th><th>What it does</th></tr>
 <tr><td>Init (all modules off)</td><td>Neutral starting point: every module disabled, all values at default.</td></tr>
@@ -396,6 +423,23 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <tr><td>Vintage Console Master</td><td>Passive EQ, opto compression, tape and a fast limiter.</td></tr>
 <tr><td>Mix Bus Rescue</td><td>Corrective chain: stabilise tone, tame harshness, restore dynamics, control lows.</td></tr>
 </table>
+<h3>Pitch</h3>
+<table class="t"><tr><th>Preset</th><th>What it does</th></tr>
+<tr><td>Vocal - Natural Tune</td><td>Transparent vocal tuning: slow retune, vibrato preserved. Set Key/Scale for best results.</td></tr>
+<tr><td>Vocal - Transparent Touch-up</td><td>Only fixes obviously off notes; leaves small drift alone.</td></tr>
+<tr><td>Vocal - Modern Pop Tight</td><td>Faster, tighter correction for modern pop vocals.</td></tr>
+<tr><td>Vocal - Hard Tune Effect</td><td>Instant snapping, no vibrato preservation: the classic robotic effect.</td></tr>
+<tr><td>Vocal - Major Scale (set key)</td><td>Corrects to a major scale; choose the song's key in the Pitch panel (or use Detect key).</td></tr>
+<tr><td>Vocal - Minor Scale (set key)</td><td>Corrects to a natural-minor scale; choose the song's key in the Pitch panel.</td></tr>
+<tr><td>Lead Instrument - Gentle</td><td>Light intonation fix for monophonic lead lines (guitar, synth, brass).</td></tr>
+<tr><td>Bass Guitar - Intonation</td><td>Low-range tracking for bass; slow, subtle correction.</td></tr>
+<tr><td>Strings / Legato Lines</td><td>Very slow retune that follows slides and keeps expression.</td></tr>
+<tr><td>Full Song - Auto Tune to 440</td><td>Detects how far the whole mix sits from A=440 and gently moves it there.</td></tr>
+<tr><td>Full Song - Auto Tune (half strength)</td><td>Corrects only half of a detected tuning offset for a subtle result.</td></tr>
+<tr><td>Full Song - 432 Hz to 440 Hz</td><td>Raises a 432 Hz-tuned master by 31.8 cents to standard 440 Hz.</td></tr>
+<tr><td>Full Song - 440 Hz to 432 Hz</td><td>Lowers a 440 Hz master by 31.8 cents to 432 Hz.</td></tr>
+<tr><td>Full Song - Tune + Master</td><td>Auto tuning fix followed by a transparent master.</td></tr>
+</table>
 
 
 <h2 id="metering">9. Metering</h2>
@@ -418,7 +462,11 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <ol><li>Learn Source on your mix, Reference on the reference track.</li><li>Enable Match EQ at 50–80 % Amount; enable Stabilizer with "Use Reference" for slow tonal drift correction.</li><li>Compare at matched loudness.</li></ol>
 <h3>D. Fixing a lopsided mix without stems</h3>
 <ol><li>Open <b>Stem EQ</b>, solo each stem to hear what it grabs.</li><li>Make small moves (±2–3 dB). Use the Tone control to brighten or darken a single stem.</li></ol>
-<h3>E. Mono and vinyl safety</h3>
+<h3>E. Tuning a vocal</h3>
+<ol><li>Put a bounced vocal (or acapella) on its own track and add AirZone 26 with the preset <b>Vocal - Natural Tune</b>.</li><li>Press <b>Detect key from audio</b> after playing a verse, or set the key yourself. Choose a scale (Major/Minor, or Chromatic if unsure).</li><li>Adjust Retune Speed and Tolerance until the correction is inaudible but the pitch sits right; check the readout.</li></ol>
+<h3>F. Fixing the tuning of a whole master</h3>
+<ol><li>Load <b>Full Song - Auto Tune to 440</b> and play the song for about ten seconds.</li><li>If the <em>Detected</em> bar shows a stable offset with good confidence, the correction glides in; otherwise leave it off.</li></ol>
+<h3>G. Mono and vinyl safety</h3>
 <ol><li>Bass Control: Sub Mono 100 %, Sub/Bass split 100–150 Hz.</li><li>Imager: reduce low-band width; watch Corr. stay positive.</li></ol>
 
 <h2 id="latency">11. Latency &amp; rendering</h2>
@@ -427,6 +475,8 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <tr><td>FFT group (any of Stem EQ, Match EQ, Stabilizer, Spectral Shaper enabled)</td><td>2048 samples (46 ms at 44.1 kHz, 43 ms at 48 kHz)</td></tr>
 <tr><td>Maximizer</td><td>lookahead + 0.8 ms safety stage (about 2–4 ms depending on algorithm)</td></tr>
 <tr><td>Vintage Tape</td><td>16 samples</td></tr>
+<tr><td>Pitch Correction – Vocal / Instrument</td><td>≈ 3200 samples at 44.1 kHz (≈ 73 ms); the value is calculated for the current sample rate</td></tr>
+<tr><td>Pitch Correction – Full Song</td><td>shares the 2048-sample FFT group</td></tr>
 <tr><td>All other modules</td><td>0</td></tr>
 </table>
 <p>The total is reported to REAPER automatically (plug-in delay compensation), so playback and rendering stay aligned. Enabling or disabling a latency-adding module while playing makes REAPER re-compute delay compensation, which can cause a brief glitch — switch such modules before you play, not during a take. Bypass is latency-compensated.</p>
@@ -469,7 +519,7 @@ cargo xtask bundle airzone26 --release
 </table>
 
 <h2 id="reference">14. Parameter reference</h2>
-<p>All 283 parameters. <em>ID</em> is the stable identifier stored in projects and preset files. Percentages are shown as 0–100 in the interface.</p>
+<p>All 300 parameters. <em>ID</em> is the stable identifier stored in projects and preset files. Percentages are shown as 0–100 in the interface.</p>
 <details><summary>Global <span class="n">4 parameters</span></summary>
 <table class="t"><tr><th>Parameter</th><th>ID</th><th>Range</th><th>Default</th></tr>
 <tr><td>Bypass</td><td><code>bypass</code></td><td>Off / On</td><td>Off</td></tr>
@@ -477,7 +527,7 @@ cargo xtask bundle airzone26 --release
 <tr><td>Output Gain</td><td><code>out_gain</code></td><td>-24 … 12 dB</td><td>0.0 dB</td></tr>
 <tr><td>Dither</td><td><code>dither</code></td><td>Off · 16 bit · 20 bit · 24 bit</td><td>Off</td></tr>
 </table></details>
-<details><summary>Modules <span class="n">20 parameters</span></summary>
+<details><summary>Modules <span class="n">21 parameters</span></summary>
 <table class="t"><tr><th>Parameter</th><th>ID</th><th>Range</th><th>Default</th></tr>
 <tr><td>Unlimiter On</td><td><code>on_unlimiter</code></td><td>Off / On</td><td>Off</td></tr>
 <tr><td>Stem EQ On</td><td><code>on_stem</code></td><td>Off / On</td><td>Off</td></tr>
@@ -499,6 +549,7 @@ cargo xtask bundle airzone26 --release
 <tr><td>Reverb On</td><td><code>on_reverb</code></td><td>Off / On</td><td>Off</td></tr>
 <tr><td>Vintage Limiter On</td><td><code>on_vlim</code></td><td>Off / On</td><td>Off</td></tr>
 <tr><td>Maximizer On</td><td><code>on_max</code></td><td>Off / On</td><td>Off</td></tr>
+<tr><td>Pitch Correction On</td><td><code>on_pitch</code></td><td>Off / On</td><td>Off</td></tr>
 </table></details>
 <details><summary>Unlimiter <span class="n">5 parameters</span></summary>
 <table class="t"><tr><th>Parameter</th><th>ID</th><th>Range</th><th>Default</th></tr>
@@ -818,6 +869,25 @@ cargo xtask bundle airzone26 --release
 <tr><td>Character</td><td><code>mx_char</code></td><td>0 … 1 %</td><td>0 %</td></tr>
 <tr><td>Stereo Independence</td><td><code>mx_indep</code></td><td>0 … 1 %</td><td>0 %</td></tr>
 <tr><td>True Peak</td><td><code>mx_tp</code></td><td>Off / On</td><td>On</td></tr>
+</table></details>
+<details><summary>Pitch Correction <span class="n">16 parameters</span></summary>
+<table class="t"><tr><th>Parameter</th><th>ID</th><th>Range</th><th>Default</th></tr>
+<tr><td>Mode</td><td><code>pc_mode</code></td><td>Vocal · Instrument · Full Song (tuning)</td><td>Vocal</td></tr>
+<tr><td>Key</td><td><code>pc_root</code></td><td>C · C# · D · D# · E · F · F# · G · G# · A · A# · B</td><td>C</td></tr>
+<tr><td>Scale</td><td><code>pc_scale</code></td><td>Chromatic · Major · Natural Minor · Harmonic Minor · Major Pentatonic · Minor Pentatonic · Blues · Dorian · Mixolydian</td><td>Chromatic</td></tr>
+<tr><td>Retune Speed</td><td><code>pc_retune</code></td><td>0 … 400 ms</td><td>90.0 ms</td></tr>
+<tr><td>Correction Amount</td><td><code>pc_amount</code></td><td>0 … 1 %</td><td>100 %</td></tr>
+<tr><td>Preserve Vibrato</td><td><code>pc_preserve</code></td><td>0 … 1 %</td><td>85 %</td></tr>
+<tr><td>Tolerance (cents)</td><td><code>pc_tol</code></td><td>0 … 50</td><td>8.00</td></tr>
+<tr><td>Max Correction (cents)</td><td><code>pc_maxshift</code></td><td>20 … 400</td><td>200.00</td></tr>
+<tr><td>Lowest Pitch</td><td><code>pc_minhz</code></td><td>50 … 500 Hz</td><td>70 Hz</td></tr>
+<tr><td>Highest Pitch</td><td><code>pc_maxhz</code></td><td>200 … 1500 Hz</td><td>1.00k Hz</td></tr>
+<tr><td>Voicing Confidence</td><td><code>pc_conf</code></td><td>0.30 … 0.95</td><td>0.75</td></tr>
+<tr><td>A4 Reference (Hz)</td><td><code>pc_a4</code></td><td>415 … 466</td><td>440.00</td></tr>
+<tr><td>Auto Detect Tuning</td><td><code>pc_tauto</code></td><td>Off / On</td><td>On</td></tr>
+<tr><td>Manual Tuning (cents)</td><td><code>pc_tmanual</code></td><td>-100 … 100</td><td>0.00</td></tr>
+<tr><td>Target A4 (Hz)</td><td><code>pc_ttarget</code></td><td>415 … 466</td><td>440.00</td></tr>
+<tr><td>Tuning Amount</td><td><code>pc_tamount</code></td><td>0 … 1 %</td><td>100 %</td></tr>
 </table></details>
 
 

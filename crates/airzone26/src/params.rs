@@ -188,6 +188,66 @@ pub enum VeAtten {
     K20,
 }
 
+#[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PitchModeP {
+    #[name = "Vocal"]
+    Vocal,
+    #[name = "Instrument"]
+    Instrument,
+    #[name = "Full Song (tuning)"]
+    FullSong,
+}
+
+#[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoteP {
+    #[name = "C"]
+    C,
+    #[name = "C#"]
+    Cs,
+    #[name = "D"]
+    D,
+    #[name = "D#"]
+    Ds,
+    #[name = "E"]
+    E,
+    #[name = "F"]
+    F,
+    #[name = "F#"]
+    Fs,
+    #[name = "G"]
+    G,
+    #[name = "G#"]
+    Gs,
+    #[name = "A"]
+    A,
+    #[name = "A#"]
+    As,
+    #[name = "B"]
+    B,
+}
+
+#[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScaleP {
+    #[name = "Chromatic"]
+    Chromatic,
+    #[name = "Major"]
+    Major,
+    #[name = "Natural Minor"]
+    Minor,
+    #[name = "Harmonic Minor"]
+    HarmonicMinor,
+    #[name = "Major Pentatonic"]
+    MajorPent,
+    #[name = "Minor Pentatonic"]
+    MinorPent,
+    #[name = "Blues"]
+    Blues,
+    #[name = "Dorian"]
+    Dorian,
+    #[name = "Mixolydian"]
+    Mixolydian,
+}
+
 // ---------------------------------------------------------------- module params
 
 #[derive(Params)]
@@ -941,6 +1001,65 @@ impl Default for MaxP {
     }
 }
 
+#[derive(Params)]
+pub struct PitchP {
+    #[id = "mode"]
+    pub mode: EnumParam<PitchModeP>,
+    #[id = "root"]
+    pub root: EnumParam<NoteP>,
+    #[id = "scale"]
+    pub scale: EnumParam<ScaleP>,
+    #[id = "retune"]
+    pub retune: FloatParam,
+    #[id = "amount"]
+    pub amount: FloatParam,
+    #[id = "preserve"]
+    pub preserve: FloatParam,
+    #[id = "tol"]
+    pub tolerance: FloatParam,
+    #[id = "maxshift"]
+    pub max_shift: FloatParam,
+    #[id = "minhz"]
+    pub min_hz: FloatParam,
+    #[id = "maxhz"]
+    pub max_hz: FloatParam,
+    #[id = "conf"]
+    pub confidence: FloatParam,
+    #[id = "a4"]
+    pub a4: FloatParam,
+    #[id = "tauto"]
+    pub tune_auto: BoolParam,
+    #[id = "tmanual"]
+    pub tune_manual: FloatParam,
+    #[id = "ttarget"]
+    pub tune_target: FloatParam,
+    #[id = "tamount"]
+    pub tune_amount: FloatParam,
+}
+
+impl Default for PitchP {
+    fn default() -> Self {
+        Self {
+            mode: EnumParam::new("Mode", PitchModeP::Vocal),
+            root: EnumParam::new("Key", NoteP::C),
+            scale: EnumParam::new("Scale", ScaleP::Chromatic),
+            retune: ms_param("Retune Speed", 90.0, 0.0, 400.0),
+            amount: pct_param("Correction Amount", 1.0),
+            preserve: pct_param("Preserve Vibrato", 0.85),
+            tolerance: lin_param("Tolerance (cents)", 8.0, 0.0, 50.0),
+            max_shift: lin_param("Max Correction (cents)", 200.0, 20.0, 400.0),
+            min_hz: hz_param("Lowest Pitch", 70.0, 50.0, 500.0),
+            max_hz: hz_param("Highest Pitch", 1000.0, 200.0, 1500.0),
+            confidence: lin_param("Voicing Confidence", 0.75, 0.3, 0.95),
+            a4: lin_param("A4 Reference (Hz)", 440.0, 415.0, 466.0),
+            tune_auto: on_param("Auto Detect Tuning", true),
+            tune_manual: lin_param("Manual Tuning (cents)", 0.0, -100.0, 100.0),
+            tune_target: lin_param("Target A4 (Hz)", 440.0, 415.0, 466.0),
+            tune_amount: pct_param("Tuning Amount", 1.0),
+        }
+    }
+}
+
 // ---------------------------------------------------------------- module switches
 
 #[derive(Params)]
@@ -985,6 +1104,8 @@ pub struct Switches {
     pub vlimiter: BoolParam,
     #[id = "on_max"]
     pub maximizer: BoolParam,
+    #[id = "on_pitch"]
+    pub pitch: BoolParam,
 }
 
 impl Default for Switches {
@@ -1011,13 +1132,14 @@ impl Default for Switches {
             reverb: p("Reverb"),
             vlimiter: p("Vintage Limiter"),
             maximizer: p("Maximizer"),
+            pitch: p("Pitch Correction"),
         }
     }
 }
 
 impl Switches {
     /// Switch parameters in `ModuleId` order.
-    pub fn by_index(&self) -> [&BoolParam; 20] {
+    pub fn by_index(&self) -> [&BoolParam; 21] {
         [
             &self.unlimiter,
             &self.stem,
@@ -1039,6 +1161,7 @@ impl Switches {
             &self.reverb,
             &self.vlimiter,
             &self.maximizer,
+            &self.pitch,
         ]
     }
 }
@@ -1125,6 +1248,8 @@ pub struct AirZoneParams {
     pub vlimiter: VlimP,
     #[nested(id_prefix = "mx", group = "Maximizer")]
     pub max: MaxP,
+    #[nested(id_prefix = "pc", group = "Pitch Correction")]
+    pub pitch: PitchP,
 }
 
 impl Default for AirZoneParams {
@@ -1159,6 +1284,7 @@ impl Default for AirZoneParams {
             reverb: ReverbP::default(),
             vlimiter: VlimP::default(),
             max: MaxP::default(),
+            pitch: PitchP::default(),
         }
     }
 }

@@ -31,7 +31,7 @@ _Updated after every task; each task is committed to `main`._
 - ✅ T21 Reference-track loading (WAV) for Match EQ / comparison
 
 ## Build & docs
-- 🚧 T22 GitHub Actions workflow written (Windows x64 + macOS arm64 VST3/CLAP) GitHub Actions: Windows x64 (10/11) + macOS arm64 (M1 Max) VST3/CLAP, artifacts
+- 🚧 T22 GitHub Actions: Windows x64 (10/11) + macOS arm64 (M1 Max) VST3/CLAP artifacts – workflow written, blocked by runner start (see T25)
 - ✅ T23 Full HTML manual (`docs/manual.html`)
 - ✅ T24 README, licensing/trademark notes
 - 🚧 T25 Verify CI green on all platforms
@@ -40,11 +40,11 @@ _Updated after every task; each task is committed to `main`._
   - ⚠️ GitHub Actions jobs fail within ~3 s with no steps executed (runner never starts) – looks like an account/billing/Actions-settings issue, not a code issue. Needs your attention in the repo's Settings → Actions / billing, then re-run the workflow.
 
 ## Optional (do last)
-- 🚧 T26 Pitch Correction section: natural-sounding auto-tune for vocals, single instruments or full songs
+- ✅ T26 Pitch Correction section: natural-sounding auto-tune for vocals, single instruments or full songs
   - ✅ T26a YIN pitch tracker (accurate to a few cents) + tests
   - ✅ T26b Key/scale model, auto key detection, note targeting with hysteresis, humanize (vibrato-preserving), tolerance, retune speed
   - ✅ T26c PSOLA formant-preserving shifter for Vocal / Instrument modes + tests
   - ✅ T26d Full-song mode: global tuning-offset detection + phase-vocoder shifter inside the shared FFT hub + tests
-  - ⬜ T26e Plugin integration: 21st module, parameters, latency reporting
-  - ⬜ T26f GUI panel: detected note / cents / target display, key + scale, auto-key button
-  - ⬜ T26g Pitch presets, manual section, final tests
+  - ✅ T26e Plugin integration: 21st module, parameters, latency reporting
+  - ✅ T26f GUI panel: detected note / cents / target display, key + scale, auto-key button
+  - ✅ T26g Pitch presets, manual section, final tests

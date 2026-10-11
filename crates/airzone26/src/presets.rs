@@ -542,6 +542,52 @@ pub fn factory() -> Vec<Preset> {
         b.bass(1.0, 0.0, 0.0, 0.0, 0.2);
         b.mx(AZ2, 3.5, -1.0, 140.0);
     }));
+    // ------------------------------------------------------------------ Pitch correction
+    v.push(preset("Vocal - Natural Tune", "Pitch", "Transparent vocal tuning: slow retune, vibrato preserved. Set Key/Scale for best results.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 0.0).s("pc_retune", 120.0).s("pc_preserve", 0.9).s("pc_tol", 12.0);
+    }));
+    v.push(preset("Vocal - Transparent Touch-up", "Pitch", "Only fixes obviously off notes; leaves small drift alone.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 0.0).s("pc_retune", 180.0).s("pc_amount", 0.7).s("pc_preserve", 0.95).s("pc_tol", 22.0);
+    }));
+    v.push(preset("Vocal - Modern Pop Tight", "Pitch", "Faster, tighter correction for modern pop vocals.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 0.0).s("pc_retune", 40.0).s("pc_preserve", 0.6).s("pc_tol", 4.0);
+    }));
+    v.push(preset("Vocal - Hard Tune Effect", "Pitch", "Instant snapping, no vibrato preservation: the classic robotic effect.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 0.0).s("pc_retune", 0.0).s("pc_preserve", 0.0).s("pc_tol", 0.0).s("pc_maxshift", 400.0);
+    }));
+    v.push(preset("Vocal - Major Scale (set key)", "Pitch", "Corrects to a major scale; choose the song's key in the Pitch panel (or use Detect key).", |b| {
+        b.on(&["pitch"]).s("pc_mode", 0.0).s("pc_scale", 1.0).s("pc_retune", 100.0).s("pc_preserve", 0.88).s("pc_tol", 10.0);
+    }));
+    v.push(preset("Vocal - Minor Scale (set key)", "Pitch", "Corrects to a natural-minor scale; choose the song's key in the Pitch panel.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 0.0).s("pc_scale", 2.0).s("pc_retune", 100.0).s("pc_preserve", 0.88).s("pc_tol", 10.0);
+    }));
+    v.push(preset("Lead Instrument - Gentle", "Pitch", "Light intonation fix for monophonic lead lines (guitar, synth, brass).", |b| {
+        b.on(&["pitch"]).s("pc_mode", 1.0).s("pc_retune", 150.0).s("pc_preserve", 0.9).s("pc_tol", 14.0).s("pc_maxhz", 1400.0);
+    }));
+    v.push(preset("Bass Guitar - Intonation", "Pitch", "Low-range tracking for bass; slow, subtle correction.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 1.0).s("pc_retune", 220.0).s("pc_amount", 0.8).s("pc_preserve", 0.95).s("pc_tol", 15.0).s("pc_minhz", 50.0).s("pc_maxhz", 400.0);
+    }));
+    v.push(preset("Strings / Legato Lines", "Pitch", "Very slow retune that follows slides and keeps expression.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 1.0).s("pc_retune", 260.0).s("pc_amount", 0.75).s("pc_preserve", 1.0).s("pc_tol", 20.0);
+    }));
+    v.push(preset("Full Song - Auto Tune to 440", "Pitch", "Detects how far the whole mix sits from A=440 and gently moves it there.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 2.0).s("pc_tauto", 1.0).s("pc_ttarget", 440.0).s("pc_tamount", 1.0);
+    }));
+    v.push(preset("Full Song - Auto Tune (half strength)", "Pitch", "Corrects only half of a detected tuning offset for a subtle result.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 2.0).s("pc_tauto", 1.0).s("pc_tamount", 0.5);
+    }));
+    v.push(preset("Full Song - 432 Hz to 440 Hz", "Pitch", "Raises a 432 Hz-tuned master by 31.8 cents to standard 440 Hz.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 2.0).s("pc_tauto", 0.0).s("pc_tmanual", 31.8);
+    }));
+    v.push(preset("Full Song - 440 Hz to 432 Hz", "Pitch", "Lowers a 440 Hz master by 31.8 cents to 432 Hz.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 2.0).s("pc_tauto", 0.0).s("pc_tmanual", -31.8);
+    }));
+    v.push(preset("Full Song - Tune + Master", "Pitch", "Auto tuning fix followed by a transparent master.", |b| {
+        b.on(&["pitch"]).s("pc_mode", 2.0).s("pc_tauto", 1.0);
+        b.hp(25.0, S24).mono_sub();
+        b.mx(AZ2, 3.0, -1.0, 150.0);
+    }));
+
     v
 }
 
@@ -754,5 +800,58 @@ mod tests {
             assert!(peak <= ceiling, "preset '{}' peak {} exceeds {}", preset.name, peak, ceiling);
             assert!(peak > 0.01, "preset '{}' silent", preset.name);
         }
+    }
+
+    fn engine_for(name: &str, sr: f32) -> Engine {
+        let params = std::sync::Arc::new(AirZoneParams::default());
+        let preset = factory().into_iter().find(|p| p.name == name).expect("preset");
+        let vals = crate::sync::Values::from_preset(params, &preset);
+        let mut e = Engine::new(sr, 512);
+        crate::sync::apply(&vals, None, &mut e);
+        e.refresh_latency();
+        e
+    }
+
+    #[test]
+    fn pitch_preset_fixes_a_flat_vocal() {
+        let sr = 44100.0;
+        let mut e = engine_for("Vocal - Hard Tune Effect", sr);
+        let f_in = 440.0 * 2f32.powf(-40.0 / 1200.0);
+        let n = (sr * 3.0) as usize / 512 * 512;
+        let x: Vec<f32> = (0..n)
+            .map(|i| {
+                let t = i as f32 / sr;
+                0.3 * (1..=10).map(|h| (std::f32::consts::TAU * f_in * h as f32 * t).sin() / h as f32).sum::<f32>()
+            })
+            .collect();
+        let mut l = x.clone();
+        let mut r = x.clone();
+        for c in 0..(n / 512) {
+            e.process(&mut l[c * 512..(c + 1) * 512], &mut r[c * 512..(c + 1) * 512]);
+        }
+        let mut d = airzone_dsp::pitch::PitchDetector::new(sr);
+        let mut last = 0.0;
+        for &v in &l[n - 16384..] {
+            if let Some(est) = d.push(v) {
+                if est.confidence > 0.8 {
+                    last = est.f0;
+                }
+            }
+        }
+        let cents = 1200.0 * (last / 440.0).log2();
+        assert!(cents.abs() < 12.0, "output at {last} Hz ({cents} cents off)");
+    }
+
+    #[test]
+    fn full_song_preset_reports_latency_and_runs() {
+        let mut e = engine_for("Full Song - 432 Hz to 440 Hz", 48000.0);
+        assert!(e.pitch_full_song);
+        assert_eq!(e.refresh_latency(), airzone_dsp::stft::FFT_SIZE);
+        let mut l: Vec<f32> = (0..48000).map(|i| 0.3 * (i as f32 * 0.05).sin()).collect();
+        let mut r = l.clone();
+        for c in 0..(48000 / 500) {
+            e.process(&mut l[c * 500..(c + 1) * 500], &mut r[c * 500..(c + 1) * 500]);
+        }
+        assert!(l.iter().all(|x| x.is_finite()));
     }
 }

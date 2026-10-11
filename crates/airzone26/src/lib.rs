@@ -95,6 +95,9 @@ impl AirZone {
         if sh.clear_reference.swap(false, Ordering::Relaxed) {
             e.hub.match_eq.clear(Capture::Reference);
         }
+        if sh.clear_key_hist.swap(false, Ordering::Relaxed) {
+            e.pitch.key_hist.clear();
+        }
         if sh.reset_meters.swap(false, Ordering::Relaxed) {
             e.in_meter.reset();
             e.out_meter.reset();
@@ -141,6 +144,17 @@ impl AirZone {
         for i in 0..3 {
             st(&sh.bass_levels[i], e.bass.meter_db[i]);
         }
+        sh.pitch_voiced.store(e.pitch.meter.voiced, Ordering::Relaxed);
+        st(&sh.pitch_midi, e.pitch.meter.midi);
+        st(&sh.pitch_target, e.pitch.meter.target_note as f32);
+        st(&sh.pitch_shift, e.pitch.meter.shift_cents);
+        st(&sh.pitch_f0, e.pitch.meter.f0);
+        for i in 0..12 {
+            st(&sh.key_hist[i], e.pitch.key_hist.hist[i]);
+        }
+        st(&sh.tune_detected, e.hub.tuning.detected_cents);
+        st(&sh.tune_applied, e.hub.tuning.applied_cents);
+        st(&sh.tune_conf, e.hub.tuning.confidence);
         sh.match_progress[0].store(e.hub.match_eq.source.frames, Ordering::Relaxed);
         sh.match_progress[1].store(e.hub.match_eq.reference.frames, Ordering::Relaxed);
         if let Some(mut c) = sh.match_curve.try_lock() {

@@ -10,6 +10,7 @@ use airzone_dsp::biquad::FilterKind;
 use airzone_dsp::chain::{sanitize_order, Engine};
 use airzone_dsp::eq::Placement;
 use airzone_dsp::maximizer::LimiterMode;
+use airzone_dsp::pitch::{Key, PitchMode, ScaleKind};
 use airzone_dsp::saturation::ShaperKind;
 use airzone_dsp::vintage::TapeSpeed;
 use nih_plug::prelude::*;
@@ -106,7 +107,7 @@ pub fn limiter_mode(i: usize) -> LimiterMode {
     LimiterMode::ALL[i.min(4)]
 }
 
-const SWITCH_IDS: [&str; 20] = [
+const SWITCH_IDS: [&str; 21] = [
     "on_unlimiter",
     "on_stem",
     "on_match",
@@ -127,6 +128,7 @@ const SWITCH_IDS: [&str; 20] = [
     "on_reverb",
     "on_vlim",
     "on_max",
+    "on_pitch",
 ];
 
 pub fn apply(v: &Values, order: Option<&[u8]>, e: &mut Engine) {
@@ -325,6 +327,26 @@ pub fn apply(v: &Values, order: Option<&[u8]>, e: &mut Engine) {
     e.maximizer.character = v.f("mx_char");
     e.maximizer.independence = v.f("mx_indep");
     e.maximizer.true_peak = v.b("mx_tp");
+
+    let mode = v.i("pc_mode");
+    e.pitch_full_song = mode >= 2;
+    let ps = &mut e.pitch.settings;
+    ps.mode = if mode == 1 { PitchMode::Instrument } else { PitchMode::Vocal };
+    ps.key = Key { root: v.i("pc_root").min(11) as u8, scale: ScaleKind::ALL[v.i("pc_scale").min(8)] };
+    ps.a4 = v.f("pc_a4");
+    ps.retune_ms = v.f("pc_retune");
+    ps.amount = v.f("pc_amount");
+    ps.preserve = v.f("pc_preserve");
+    ps.tolerance_cents = v.f("pc_tol");
+    ps.max_shift_cents = v.f("pc_maxshift");
+    ps.min_hz = v.f("pc_minhz");
+    ps.max_hz = v.f("pc_maxhz");
+    ps.confidence = v.f("pc_conf");
+    let t = &mut e.hub.tuning;
+    t.auto = v.b("pc_tauto");
+    t.manual_cents = v.f("pc_tmanual");
+    t.target_a4 = v.f("pc_ttarget");
+    t.amount = v.f("pc_tamount");
 }
 
 #[cfg(test)]
