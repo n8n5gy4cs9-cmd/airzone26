@@ -1,0 +1,89 @@
+name: Build
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test (Linux)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libx11-xcb-dev libxcb1-dev libxcb-icccm4-dev \
+            libxcb-dri2-0-dev libxcb-randr0-dev libgl1-mesa-dev libxcursor-dev pkg-config
+      - name: Unit + preset tests
+        run: cargo test --workspace --release
+
+  bundle:
+    name: Bundle (${{ matrix.name }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64 (10/11)
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: AirZone26-Windows-x64
+          - name: macOS Apple Silicon (M1/M2/M3, arm64)
+            os: macos-14
+            target: aarch64-apple-darwin
+            artifact: AirZone26-macOS-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Bundle VST3 + CLAP
+        run: cargo xtask bundle airzone26 --release --target ${{ matrix.target }}
+      - name: Ad-hoc sign (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          for b in "target/bundled/AirZone 26.vst3" "target/bundled/AirZone 26.clap"; do
+            codesign --force --deep --sign - "$b" || true
+          done
+      - name: Stage artifact
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp -R target/bundled/* dist/
+          cp README.md dist/ || true
+          cp -R docs dist/docs || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: bundle
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Zip
+        run: |
+          cd artifacts
+          for d in */; do (cd "$d" && zip -r "../${d%/}.zip" .); done
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.zip
