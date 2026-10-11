@@ -3,6 +3,7 @@
 pub mod biquad;
 pub mod dynamics;
 pub mod eq;
+pub mod fx;
 pub mod maximizer;
 pub mod saturation;
 pub mod spectral;
