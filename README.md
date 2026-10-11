@@ -17,7 +17,7 @@ Clarity · Codec Preview · Delay · Reverb · Vintage Limiter · Maximizer (7 a
 `./build.sh` builds the Windows x64 and macOS arm64 bundles into `dist/` (run `./build.sh --help`; macOS bundles need a Mac).
 ```
 cargo test --workspace
-cargo xtask bundle airzone26 airzone-tonal --release     # -> target/bundled/AirZone 26.vst3 / .clap (+ Tonal Balance)
+cargo xtask bundle -p airzone26 -p airzone-tonal --release     # -> target/bundled/AirZone 26.vst3 / .clap (+ Tonal Balance)
 ```
 CI (`.github/workflows/build.yml`) builds Windows x64 and macOS arm64 bundles and uploads them as artifacts.
 

@@ -90,7 +90,7 @@ build_windows() {
   rm -rf "$out"; mkdir -p "$out"
 
   if [ "$HOST" = windows ]; then
-    cargo xtask bundle "$PKG" "$TONAL_PKG" --release --target "$WIN_TARGET"
+    cargo xtask bundle -p "$PKG" -p "$TONAL_PKG" --release --target "$WIN_TARGET"
     cp -R "target/bundled/$NAME.vst3" "$out/"
     cp    "target/bundled/$NAME.clap" "$out/"
     cp -R "target/bundled/$TONAL.vst3" "$out/"
@@ -124,7 +124,7 @@ codesign_adhoc() {
 build_macos() {
   say "macOS Apple Silicon (arm64)"
   rustup target add "$MAC_ARM" >/dev/null
-  cargo xtask bundle "$PKG" "$TONAL_PKG" --release --target "$MAC_ARM"
+  cargo xtask bundle -p "$PKG" -p "$TONAL_PKG" --release --target "$MAC_ARM"
   local out="dist/AirZone26-macOS-arm64"
   rm -rf "$out"; mkdir -p "$out"
   cp -R "target/bundled/$NAME.vst3" "$out/"
@@ -138,7 +138,7 @@ build_macos() {
   if [ "$want_intel" -eq 1 ]; then
     say "macOS universal (arm64 + x86_64)"
     rustup target add "$MAC_X86" >/dev/null
-    cargo xtask bundle-universal "$PKG" "$TONAL_PKG" --release
+    cargo xtask bundle-universal -p "$PKG" -p "$TONAL_PKG" --release
     local uout="dist/AirZone26-macOS-universal"
     rm -rf "$uout"; mkdir -p "$uout"
     cp -R "target/bundled/$NAME.vst3" "$uout/"

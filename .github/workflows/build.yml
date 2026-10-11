@@ -49,7 +49,7 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
       - name: Bundle VST3 + CLAP
-        run: cargo xtask bundle airzone26 airzone-tonal --release --target ${{ matrix.target }}
+        run: cargo xtask bundle -p airzone26 -p airzone-tonal --release --target ${{ matrix.target }}
       - name: Ad-hoc sign (macOS)
         if: runner.os == 'macOS'
         run: |
