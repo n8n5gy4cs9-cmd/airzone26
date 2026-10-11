@@ -31,12 +31,20 @@ _Updated after every task; each task is committed to `main`._
 - ✅ T21 Reference-track loading (WAV) for Match EQ / comparison
 
 ## Build & docs
-- 🚧 T22 (workflow written; run status checked in T25) GitHub Actions: Windows x64 (10/11) + macOS arm64 (M1 Max) VST3/CLAP, artifacts
+- 🚧 T22 GitHub Actions workflow written (Windows x64 + macOS arm64 VST3/CLAP) GitHub Actions: Windows x64 (10/11) + macOS arm64 (M1 Max) VST3/CLAP, artifacts
 - ✅ T23 Full HTML manual (`docs/manual.html`)
 - ✅ T24 README, licensing/trademark notes
-- ⬜ T25 Verify CI green on all platforms, fix issues
+- 🚧 T25 Verify CI green on all platforms
+  - ✅ Linux: `cargo test --workspace` green, `cargo xtask bundle` produces VST3 + CLAP
+  - ✅ `cargo check` passes for `x86_64-pc-windows-msvc` and `aarch64-apple-darwin` (type-check only; linking needs the real OS)
+  - ⚠️ GitHub Actions jobs fail within ~3 s with no steps executed (runner never starts) – looks like an account/billing/Actions-settings issue, not a code issue. Needs your attention in the repo's Settings → Actions / billing, then re-run the workflow.
 
 ## Optional (do last)
-- ⬜ T26 Pitch Correction section: natural-sounding auto-tune for vocals, single instruments or full songs
-  (YIN/pitch tracking, scale/key detection, soft retune speed + humanize, formant-preserving shift,
-  polyphonic/full-mix mode via gentle spectral correction, bypass-safe for non-pitched material)
+- 🚧 T26 Pitch Correction section: natural-sounding auto-tune for vocals, single instruments or full songs
+  - ⬜ T26a YIN pitch tracker (accurate to a few cents) + tests
+  - ⬜ T26b Key/scale model, auto key detection, note targeting with hysteresis, humanize (vibrato-preserving), tolerance, retune speed
+  - ⬜ T26c PSOLA formant-preserving shifter for Vocal / Instrument modes + tests
+  - ⬜ T26d Full-song mode: global tuning-offset detection + phase-vocoder shifter inside the shared FFT hub + tests
+  - ⬜ T26e Plugin integration: 21st module, parameters, latency reporting
+  - ⬜ T26f GUI panel: detected note / cents / target display, key + scale, auto-key button
+  - ⬜ T26g Pitch presets, manual section, final tests
