@@ -5,6 +5,7 @@ pub mod dynamics;
 pub mod eq;
 pub mod fx;
 pub mod maximizer;
+pub mod meter;
 pub mod saturation;
 pub mod spectral;
 pub mod stft;
