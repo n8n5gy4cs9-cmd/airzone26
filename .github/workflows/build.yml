@@ -49,11 +49,11 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
       - name: Bundle VST3 + CLAP
-        run: cargo xtask bundle airzone26 --release --target ${{ matrix.target }}
+        run: cargo xtask bundle airzone26 airzone-tonal --release --target ${{ matrix.target }}
       - name: Ad-hoc sign (macOS)
         if: runner.os == 'macOS'
         run: |
-          for b in "target/bundled/AirZone 26.vst3" "target/bundled/AirZone 26.clap"; do
+          for b in "target/bundled/AirZone 26.vst3" "target/bundled/AirZone 26.clap" "target/bundled/AirZone 26 Tonal Balance.vst3" "target/bundled/AirZone 26 Tonal Balance.clap"; do
             codesign --force --deep --sign - "$b" || true
           done
       - name: Stage artifact

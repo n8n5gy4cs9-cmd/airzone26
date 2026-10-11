@@ -53,6 +53,8 @@ pub fn show(ui: &mut Ui, m: ModuleId, c: &Ctx, st: &mut State) {
         ModuleId::VintageLimiter => vlim(ui, c),
         ModuleId::Maximizer => maximizer(ui, c),
         ModuleId::PitchCorrect => pitch(ui, c),
+        ModuleId::Clarity => clarity(ui, c),
+        ModuleId::CodecPreview => codec(ui, c),
     }
 }
 
@@ -128,6 +130,8 @@ pub fn description(m: ModuleId) -> &'static str {
         ModuleId::VintageLimiter => "Fast, coloured peak limiter.",
         ModuleId::Maximizer => "Lookahead true-peak limiter with 5 algorithms.",
         ModuleId::PitchCorrect => "Natural pitch correction: vocals, instruments, or whole-song tuning.",
+        ModuleId::Clarity => "Lifts quiet detail and air in the upper mids and highs without making loud parts harsh.",
+        ModuleId::CodecPreview => "Hear roughly how your master will sound after lossy MP3 / AAC / Opus encoding (monitoring only).",
     }
 }
 
@@ -512,7 +516,7 @@ fn maximizer(ui: &mut Ui, c: &Ctx) {
             toggle(ui, c.setter, &p.true_peak);
         });
     });
-    ui.label(RichText::new("AZ-1 clean | AZ-2 program-dependent | AZ-3 3-band | AZ-4 4-band + saturation | AZ-5 crest-adaptive. Latency is reported to the host.").color(TEXT_DIM).size(11.0));
+    ui.label(RichText::new("AZ-1 clean | AZ-2 program-dependent | AZ-3 3-band | AZ-4 4-band + saturation | AZ-5 crest-adaptive | AZ-6 soft clip + limit | AZ-7 smooth, long lookahead. Latency is reported to the host.").color(TEXT_DIM).size(11.0));
 }
 
 fn pitch(ui: &mut Ui, c: &Ctx) {
@@ -632,4 +636,25 @@ fn pitch(ui: &mut Ui, c: &Ctx) {
         sl!(ui, c.setter, p.tune_target, p.tune_amount, p.tune_manual);
         ui.label(RichText::new("Auto: corrects slowly (about 10 cents per second) so there is no audible pitch movement. Manual: applies the Manual Tuning offset directly.").color(TEXT_DIM).size(11.0));
     }
+}
+
+fn clarity(ui: &mut Ui, c: &Ctx) {
+    let p = &c.p.clarity;
+    bar(ui, "Boost", &format!("{:+.1} dB", Shared::load(&c.sh.clarity_boost)), Shared::load(&c.sh.clarity_boost), 0.0, 8.0, ACCENT2, 220.0);
+    sl!(ui, c.setter, p.amount, p.freq, p.harmonics, p.warmth, p.mix);
+    ui.label(RichText::new("Detail raises quiet material above Lower Edge (loud passages are untouched). Harmonics adds a little saturated air. Warmth is a +/-3 dB low shelf to balance a brighter result.").color(TEXT_DIM).size(11.0));
+}
+
+fn codec(ui: &mut Ui, c: &Ctx) {
+    let p = &c.p.codec;
+    combo(ui, c.setter, &p.format, "cp_fmt");
+    sl!(ui, c.setter, p.kbps);
+    toggle(ui, c.setter, &p.delta);
+    let cut = airzone_dsp::spectral::codec_cutoff_hz(p.format.value().to_index(), p.kbps.value());
+    ui.label(format!("Approximate encoder low-pass: {:.1} kHz", cut / 1000.0));
+    ui.colored_label(
+        ACCENT2,
+        "Monitoring tool: this is a simulation of lossy-codec artefacts (band limiting, joint-stereo simplification, quantisation holes, pre-echo smearing), not a real encoder. Switch it off before you render or export your master.",
+    );
+    ui.label(RichText::new("Place it last in the chain. 'Listen to Difference' plays only what the simulated encode removes - if that sounds like music, the encode will be audible.").color(TEXT_DIM).size(11.0));
 }

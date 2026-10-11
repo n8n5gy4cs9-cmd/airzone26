@@ -104,10 +104,10 @@ fn place(i: usize) -> Placement {
 }
 
 pub fn limiter_mode(i: usize) -> LimiterMode {
-    LimiterMode::ALL[i.min(4)]
+    LimiterMode::ALL[i.min(LimiterMode::ALL.len() - 1)]
 }
 
-const SWITCH_IDS: [&str; 21] = [
+const SWITCH_IDS: [&str; 23] = [
     "on_unlimiter",
     "on_stem",
     "on_match",
@@ -129,6 +129,8 @@ const SWITCH_IDS: [&str; 21] = [
     "on_vlim",
     "on_max",
     "on_pitch",
+    "on_clarity",
+    "on_codec",
 ];
 
 pub fn apply(v: &Values, order: Option<&[u8]>, e: &mut Engine) {
@@ -351,6 +353,16 @@ pub fn apply(v: &Values, order: Option<&[u8]>, e: &mut Engine) {
     t.manual_cents = v.f("pc_tmanual");
     t.target_a4 = v.f("pc_ttarget");
     t.amount = v.f("pc_tamount");
+
+    e.clarity.amount = v.f("cl_amount");
+    e.clarity.freq = v.f("cl_freq");
+    e.clarity.harmonics = v.f("cl_harm");
+    e.clarity.warmth = v.f("cl_warm");
+    e.clarity.mix = v.f("cl_mix");
+
+    e.hub.codec.format = v.i("cp_fmt").min(2);
+    e.hub.codec.kbps = v.f("cp_kbps");
+    e.hub.codec.delta = v.b("cp_delta");
 }
 
 #[cfg(test)]

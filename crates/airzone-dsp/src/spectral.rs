@@ -713,6 +713,120 @@ impl TuningFix {
     }
 }
 
+// ---------------------------------------------------------------- Codec preview
+
+const CODEC_BANDS: usize = 24;
+
+/// Approximation of lossy-codec artefacts for monitoring: band-limiting, joint-stereo
+/// simplification, magnitude quantisation per critical-style band (spectral "holes" and
+/// quantisation noise) and the smearing of a long transform window. It is *not* a real MP3/AAC/Opus
+/// encoder - it lets you hear how a master tends to behave after lossy encoding.
+#[derive(Clone, Debug)]
+pub struct CodecPreview {
+    pub enabled: bool,
+    /// 0 = MP3-like, 1 = AAC-like, 2 = Opus-like
+    pub format: usize,
+    pub kbps: f32,
+    /// Output only what the "codec" removed.
+    pub delta: bool,
+    em: [f32; CODEC_BANDS],
+    es: [f32; CODEC_BANDS],
+    cnt: [f32; CODEC_BANDS],
+}
+
+impl Default for CodecPreview {
+    fn default() -> Self {
+        Self { enabled: false, format: 0, kbps: 128.0, delta: false, em: [0.0; CODEC_BANDS], es: [0.0; CODEC_BANDS], cnt: [0.0; CODEC_BANDS] }
+    }
+}
+
+/// Low-pass frequency used by typical encoders at a bitrate.
+pub fn codec_cutoff_hz(format: usize, kbps: f32) -> f32 {
+    let base = if kbps < 48.0 {
+        7000.0 + (kbps - 32.0) * 150.0
+    } else if kbps < 96.0 {
+        9500.0 + (kbps - 48.0) * 110.0
+    } else if kbps < 160.0 {
+        14800.0 + (kbps - 96.0) * 28.0
+    } else if kbps < 256.0 {
+        16600.0 + (kbps - 160.0) * 25.0
+    } else {
+        19000.0 + (kbps - 256.0) * 15.0
+    };
+    let bonus = match format {
+        1 => 1500.0,
+        2 => 2500.0,
+        _ => 0.0,
+    };
+    (base + bonus).clamp(5000.0, 20500.0)
+}
+
+fn quantize_mag(c: Complex32, step: f32) -> Complex32 {
+    let mag = c.norm();
+    if step <= 1.0e-12 || mag <= 1.0e-12 {
+        return c;
+    }
+    let q = (mag / step).round() * step;
+    c * (q / mag)
+}
+
+impl CodecPreview {
+    fn band_of(f: f32, sr: f32) -> usize {
+        let top = (sr * 0.5).max(100.0);
+        let t = ((f.max(50.0) / 50.0).ln() / (top / 50.0).ln()).clamp(0.0, 0.9999);
+        (t * CODEC_BANDS as f32) as usize
+    }
+
+    fn apply(&mut self, sr: f32, l: &mut [Complex32], r: &mut [Complex32]) {
+        let cutoff = codec_cutoff_hz(self.format, self.kbps).min(sr * 0.49);
+        let fmt_bonus = [0.0f32, 2.0, 1.5][self.format.min(2)];
+        let snr_db = (1.5 + 0.075 * self.kbps + fmt_bonus).clamp(2.0, 30.0);
+        // joint stereo gets coarser for the side signal at low bitrates
+        let side_penalty = ((128.0 - self.kbps) / 40.0).clamp(0.0, 3.0) + 2.0;
+        self.em = [0.0; CODEC_BANDS];
+        self.es = [0.0; CODEC_BANDS];
+        self.cnt = [0.0; CODEC_BANDS];
+        for k in 1..BINS {
+            let b = Self::band_of(bin_freq(k, sr), sr);
+            let m = (l[k] + r[k]) * 0.5;
+            let s = (l[k] - r[k]) * 0.5;
+            self.em[b] += m.norm_sqr();
+            self.es[b] += s.norm_sqr();
+            self.cnt[b] += 1.0;
+        }
+        for b in 0..CODEC_BANDS {
+            if self.cnt[b] > 0.0 {
+                self.em[b] /= self.cnt[b];
+                self.es[b] /= self.cnt[b];
+            }
+        }
+        let nm = 10f32.powf(-snr_db / 10.0);
+        let ns = 10f32.powf(-(snr_db - side_penalty) / 10.0);
+        for k in 1..BINS {
+            let f = bin_freq(k, sr);
+            let (ol, or) = (l[k], r[k]);
+            let m = (ol + or) * 0.5;
+            let s = (ol - or) * 0.5;
+            let (qm, qs) = if f > cutoff {
+                (Complex32::new(0.0, 0.0), Complex32::new(0.0, 0.0))
+            } else {
+                let b = Self::band_of(f, sr);
+                let step_m = (12.0 * self.em[b] * nm).sqrt();
+                let step_s = (12.0 * self.es[b] * ns).sqrt();
+                (quantize_mag(m, step_m), quantize_mag(s, step_s))
+            };
+            let (pl, pr) = (qm + qs, qm - qs);
+            if self.delta {
+                l[k] = ol - pl;
+                r[k] = or - pr;
+            } else {
+                l[k] = pl;
+                r[k] = pr;
+            }
+        }
+    }
+}
+
 // ---------------------------------------------------------------- Hub
 
 /// One FFT pass shared by all four spectral modules (so latency is constant).
@@ -723,6 +837,7 @@ pub struct SpectralHub {
     pub stabilizer: Stabilizer,
     pub shaper: SpectralShaper,
     pub tuning: TuningFix,
+    pub codec: CodecPreview,
     sr: f32,
 }
 
@@ -735,6 +850,7 @@ impl Default for SpectralHub {
             stabilizer: Stabilizer::default(),
             shaper: SpectralShaper::default(),
             tuning: TuningFix::default(),
+            codec: CodecPreview::default(),
             sr: 44100.0,
         }
     }
@@ -761,11 +877,12 @@ impl SpectralHub {
             || self.stabilizer.enabled
             || self.shaper.enabled
             || self.tuning.enabled
+            || self.codec.enabled
     }
 
     pub fn process(&mut self, l: &mut [f32], r: &mut [f32]) {
         let sr = self.sr;
-        let Self { stft, stem, match_eq, stabilizer, shaper, tuning, .. } = self;
+        let Self { stft, stem, match_eq, stabilizer, shaper, tuning, codec, .. } = self;
         stft.process(l, r, |sl, sr_spec| {
             if match_eq.capture != Capture::Off || match_eq.enabled {
                 match_eq.apply(sr, sl, sr_spec);
@@ -782,6 +899,9 @@ impl SpectralHub {
             }
             if tuning.enabled {
                 tuning.apply(sr, sl, sr_spec);
+            }
+            if codec.enabled {
+                codec.apply(sr, sl, sr_spec);
             }
         });
     }
@@ -901,5 +1021,45 @@ mod tests {
         assert!((cents - 50.0).abs() < 8.0, "measured {cents} cents ({f_out} Hz)");
         let peak = tail.iter().fold(0.0f32, |a, b| a.max(b.abs()));
         assert!(peak > 0.25 && peak < 0.6, "peak {peak}");
+    }
+}
+
+#[cfg(test)]
+mod codec_tests {
+    use super::*;
+
+    fn run(hub: &mut SpectralHub, src: &[f32]) -> Vec<f32> {
+        let mut l = src.to_vec();
+        let mut r = src.to_vec();
+        for c in 0..(src.len() / 512) {
+            hub.process(&mut l[c * 512..(c + 1) * 512], &mut r[c * 512..(c + 1) * 512]);
+        }
+        l
+    }
+
+    #[test]
+    fn low_bitrate_removes_the_top_end() {
+        let sr = 48000.0;
+        let n = 48000;
+        let tone = |f: f32| -> Vec<f32> { (0..n).map(|i| 0.3 * (std::f32::consts::TAU * f * i as f32 / sr).sin()).collect() };
+        let mut hub = SpectralHub::default();
+        hub.prepare(sr);
+        hub.codec.enabled = true;
+        hub.codec.kbps = 64.0;
+        let hi = run(&mut hub, &tone(15000.0));
+        hub.reset();
+        let lo = run(&mut hub, &tone(1000.0));
+        let e = |v: &[f32]| v[24000..].iter().map(|x| x * x).sum::<f32>();
+        assert!(e(&hi) < 0.01 * e(&lo), "high {} vs low {}", e(&hi), e(&lo));
+    }
+
+    #[test]
+    fn cutoff_grows_with_bitrate() {
+        let mut last = 0.0;
+        for k in [32.0, 64.0, 96.0, 128.0, 192.0, 256.0, 320.0] {
+            let c = codec_cutoff_hz(0, k);
+            assert!(c >= last, "{k}: {c} < {last}");
+            last = c;
+        }
     }
 }

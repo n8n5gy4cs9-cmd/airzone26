@@ -20,6 +20,8 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 ROOT="$PWD"
 NAME="AirZone 26"
+TONAL="AirZone 26 Tonal Balance"
+TONAL_PKG="airzone-tonal"
 PKG="airzone26"
 WIN_TARGET="x86_64-pc-windows-msvc"
 MAC_ARM="aarch64-apple-darwin"
@@ -88,13 +90,15 @@ build_windows() {
   rm -rf "$out"; mkdir -p "$out"
 
   if [ "$HOST" = windows ]; then
-    cargo xtask bundle "$PKG" --release --target "$WIN_TARGET"
+    cargo xtask bundle "$PKG" "$TONAL_PKG" --release --target "$WIN_TARGET"
     cp -R "target/bundled/$NAME.vst3" "$out/"
     cp    "target/bundled/$NAME.clap" "$out/"
+    cp -R "target/bundled/$TONAL.vst3" "$out/"
+    cp    "target/bundled/$TONAL.clap" "$out/"
   else
     # cross-compile with the MSVC toolchain via cargo-xwin (downloads the Windows SDK on first use)
     command -v cargo-xwin >/dev/null || { say "installing cargo-xwin"; cargo install --locked cargo-xwin; }
-    cargo xwin build --release --target "$WIN_TARGET" -p "$PKG" \
+    cargo xwin build --release --target "$WIN_TARGET" -p "$PKG" -p "$TONAL_PKG" \
       || die "cross-compile failed (cargo-xwin needs internet access to download the Windows SDK/CRT from Microsoft). Build on Windows instead, or use the GitHub Actions workflow."
     local dll="target/$WIN_TARGET/release/${PKG}.dll"
     [ -f "$dll" ] || die "expected $dll was not produced"
@@ -102,6 +106,11 @@ build_windows() {
     mkdir -p "$out/$NAME.vst3/Contents/x86_64-win"
     cp "$dll" "$out/$NAME.vst3/Contents/x86_64-win/$NAME.vst3"
     cp "$dll" "$out/$NAME.clap"
+    local dll2="target/$WIN_TARGET/release/airzone_tonal.dll"
+    [ -f "$dll2" ] || die "expected $dll2 was not produced"
+    mkdir -p "$out/$TONAL.vst3/Contents/x86_64-win"
+    cp "$dll2" "$out/$TONAL.vst3/Contents/x86_64-win/$TONAL.vst3"
+    cp "$dll2" "$out/$TONAL.clap"
   fi
   stage_docs "$out"; zip_dir "$out"
   echo "   -> $out"
@@ -115,24 +124,28 @@ codesign_adhoc() {
 build_macos() {
   say "macOS Apple Silicon (arm64)"
   rustup target add "$MAC_ARM" >/dev/null
-  cargo xtask bundle "$PKG" --release --target "$MAC_ARM"
+  cargo xtask bundle "$PKG" "$TONAL_PKG" --release --target "$MAC_ARM"
   local out="dist/AirZone26-macOS-arm64"
   rm -rf "$out"; mkdir -p "$out"
   cp -R "target/bundled/$NAME.vst3" "$out/"
   cp -R "target/bundled/$NAME.clap" "$out/"
-  codesign_adhoc "$out/$NAME.vst3" "$out/$NAME.clap"
+  cp -R "target/bundled/$TONAL.vst3" "$out/"
+  cp -R "target/bundled/$TONAL.clap" "$out/"
+  codesign_adhoc "$out/$NAME.vst3" "$out/$NAME.clap" "$out/$TONAL.vst3" "$out/$TONAL.clap"
   stage_docs "$out"; zip_dir "$out"
   echo "   -> $out"
 
   if [ "$want_intel" -eq 1 ]; then
     say "macOS universal (arm64 + x86_64)"
     rustup target add "$MAC_X86" >/dev/null
-    cargo xtask bundle-universal "$PKG" --release
+    cargo xtask bundle-universal "$PKG" "$TONAL_PKG" --release
     local uout="dist/AirZone26-macOS-universal"
     rm -rf "$uout"; mkdir -p "$uout"
     cp -R "target/bundled/$NAME.vst3" "$uout/"
     cp -R "target/bundled/$NAME.clap" "$uout/"
-    codesign_adhoc "$uout/$NAME.vst3" "$uout/$NAME.clap"
+    cp -R "target/bundled/$TONAL.vst3" "$uout/"
+    cp -R "target/bundled/$TONAL.clap" "$uout/"
+    codesign_adhoc "$uout/$NAME.vst3" "$uout/$NAME.clap" "$uout/$TONAL.vst3" "$uout/$TONAL.clap"
     stage_docs "$uout"; zip_dir "$uout"
     echo "   -> $uout"
   fi

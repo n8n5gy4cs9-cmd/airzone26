@@ -110,6 +110,10 @@ pub enum LimiterP {
     Aggressive,
     #[name = "AZ-5 Adaptive"]
     Adaptive,
+    #[name = "AZ-6 Clip + Limit"]
+    Clipper,
+    #[name = "AZ-7 Smooth"]
+    Smooth,
 }
 
 #[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
@@ -248,6 +252,16 @@ pub enum ScaleP {
     Dorian,
     #[name = "Mixolydian"]
     Mixolydian,
+}
+
+#[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CodecFmtP {
+    #[name = "MP3-like"]
+    Mp3,
+    #[name = "AAC-like"]
+    Aac,
+    #[name = "Opus-like"]
+    Opus,
 }
 
 // ---------------------------------------------------------------- module params
@@ -1068,6 +1082,52 @@ impl Default for PitchP {
     }
 }
 
+#[derive(Params)]
+pub struct ClarityP {
+    #[id = "amount"]
+    pub amount: FloatParam,
+    #[id = "freq"]
+    pub freq: FloatParam,
+    #[id = "harm"]
+    pub harmonics: FloatParam,
+    #[id = "warm"]
+    pub warmth: FloatParam,
+    #[id = "mix"]
+    pub mix: FloatParam,
+}
+
+impl Default for ClarityP {
+    fn default() -> Self {
+        Self {
+            amount: pct_param("Detail", 0.4),
+            freq: hz_param("Lower Edge", 2000.0, 500.0, 8000.0),
+            harmonics: pct_param("Harmonics", 0.2),
+            warmth: lin_param("Warmth", 0.0, -1.0, 1.0),
+            mix: pct_param("Mix", 1.0),
+        }
+    }
+}
+
+#[derive(Params)]
+pub struct CodecP {
+    #[id = "fmt"]
+    pub format: EnumParam<CodecFmtP>,
+    #[id = "kbps"]
+    pub kbps: FloatParam,
+    #[id = "delta"]
+    pub delta: BoolParam,
+}
+
+impl Default for CodecP {
+    fn default() -> Self {
+        Self {
+            format: EnumParam::new("Codec Style", CodecFmtP::Mp3),
+            kbps: FloatParam::new("Bitrate", 128.0, FloatRange::Linear { min: 32.0, max: 320.0 }).with_unit(" kbps").with_step_size(1.0),
+            delta: on_param("Listen to Difference", false),
+        }
+    }
+}
+
 // ---------------------------------------------------------------- module switches
 
 #[derive(Params)]
@@ -1114,6 +1174,10 @@ pub struct Switches {
     pub maximizer: BoolParam,
     #[id = "on_pitch"]
     pub pitch: BoolParam,
+    #[id = "on_clarity"]
+    pub clarity: BoolParam,
+    #[id = "on_codec"]
+    pub codec: BoolParam,
 }
 
 impl Default for Switches {
@@ -1141,13 +1205,15 @@ impl Default for Switches {
             vlimiter: p("Vintage Limiter"),
             maximizer: p("Maximizer"),
             pitch: p("Pitch Correction"),
+            clarity: p("Clarity"),
+            codec: p("Codec Preview"),
         }
     }
 }
 
 impl Switches {
     /// Switch parameters in `ModuleId` order.
-    pub fn by_index(&self) -> [&BoolParam; 21] {
+    pub fn by_index(&self) -> [&BoolParam; 23] {
         [
             &self.unlimiter,
             &self.stem,
@@ -1170,6 +1236,8 @@ impl Switches {
             &self.vlimiter,
             &self.maximizer,
             &self.pitch,
+            &self.clarity,
+            &self.codec,
         ]
     }
 }
@@ -1261,6 +1329,10 @@ pub struct AirZoneParams {
     pub max: MaxP,
     #[nested(id_prefix = "pc", group = "Pitch Correction")]
     pub pitch: PitchP,
+    #[nested(id_prefix = "cl", group = "Clarity")]
+    pub clarity: ClarityP,
+    #[nested(id_prefix = "cp", group = "Codec Preview")]
+    pub codec: CodecP,
 }
 
 impl Default for AirZoneParams {
@@ -1298,6 +1370,8 @@ impl Default for AirZoneParams {
             vlimiter: VlimP::default(),
             max: MaxP::default(),
             pitch: PitchP::default(),
+            clarity: ClarityP::default(),
+            codec: CodecP::default(),
         }
     }
 }

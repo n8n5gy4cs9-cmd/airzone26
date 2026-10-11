@@ -11,13 +11,13 @@ Full mastering suite for **REAPER** (and any VST3 / CLAP host) — written in **
 ## Modules
 Unlimiter · Stem EQ · Match EQ · Equalizer · Dynamic EQ · Stabilizer · Spectral Shaper · Bass Control ·
 Low End Focus · Dynamics (3-band) · Vintage Comp · Vintage EQ · Vintage Tape · Exciter · Impact · Imager ·
-Delay · Reverb · Vintage Limiter · Maximizer (5 algorithms, true-peak) · Pitch Correction (vocal / instrument / full-song tuning)
+Clarity · Codec Preview · Delay · Reverb · Vintage Limiter · Maximizer (7 algorithms, true-peak) · Pitch Correction (vocal / instrument / full-song tuning)
 
 ## Build
 `./build.sh` builds the Windows x64 and macOS arm64 bundles into `dist/` (run `./build.sh --help`; macOS bundles need a Mac).
 ```
 cargo test --workspace
-cargo xtask bundle airzone26 --release     # -> target/bundled/AirZone 26.vst3 / .clap
+cargo xtask bundle airzone26 airzone-tonal --release     # -> target/bundled/AirZone 26.vst3 / .clap (+ Tonal Balance)
 ```
 CI (`.github/workflows/build.yml`) builds Windows x64 and macOS arm64 bundles and uploads them as artifacts.
 

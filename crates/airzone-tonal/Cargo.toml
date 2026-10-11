@@ -1,0 +1,16 @@
+[package]
+name = "airzone-tonal"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "AirZone 26 Tonal Balance - a pass-through tonal balance meter with genre or reference targets (VST3 / CLAP)"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+airzone-dsp = { path = "../airzone-dsp" }
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "de421011f41a6d10fc8c7a6084e4f4dee0143683" }
+nih_plug_egui = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "de421011f41a6d10fc8c7a6084e4f4dee0143683" }
+parking_lot = "0.12"
+hound = "3.5"

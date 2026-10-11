@@ -64,6 +64,8 @@ pub fn module_prefix(m: ModuleId) -> &'static str {
         ModuleId::VintageLimiter => "vl_",
         ModuleId::Maximizer => "mx_",
         ModuleId::PitchCorrect => "pc_",
+        ModuleId::Clarity => "cl_",
+        ModuleId::CodecPreview => "cp_",
     }
 }
 
@@ -91,6 +93,8 @@ pub fn module_switch(m: ModuleId) -> &'static str {
         ModuleId::VintageLimiter => "on_vlim",
         ModuleId::Maximizer => "on_max",
         ModuleId::PitchCorrect => "on_pitch",
+        ModuleId::Clarity => "on_clarity",
+        ModuleId::CodecPreview => "on_codec",
     }
 }
 
@@ -312,6 +316,23 @@ pub fn factory() -> Vec<ModulePreset> {
     v.push(mb(M::PitchCorrect).s("mode", 2.0).s("tauto", 0.0).s("tmanual", -31.8).done("Full Song - 440 to 432", "Lowers a 440 Hz master to 432 Hz."));
     v.push(mb(M::PitchCorrect).s("mode", 0.0).s("scale", 1.0).s("retune", 100.0).s("preserve", 0.88).s("tol", 10.0).done("Vocal - Major Scale (set key)", "Corrects to a major scale; choose the key."));
     v.push(mb(M::PitchCorrect).s("mode", 0.0).s("scale", 2.0).s("retune", 100.0).s("preserve", 0.88).s("tol", 10.0).done("Vocal - Minor Scale (set key)", "Corrects to a natural minor scale; choose the key."));
+
+    // ---------------------------------------------------------------- Clarity
+    v.push(mb(M::Clarity).s("amount", 0.4).s("freq", 2000.0).s("harm", 0.2).s("mix", 1.0).done("Natural Detail", "Lifts quiet detail in the upper mids and highs."));
+    v.push(mb(M::Clarity).s("amount", 0.7).s("freq", 3000.0).s("harm", 0.35).s("warm", 0.0).done("Open & Airy", "Strong detail lift with a little harmonic air."));
+    v.push(mb(M::Clarity).s("amount", 0.5).s("freq", 1500.0).s("harm", 0.15).s("warm", 0.4).done("Warm Clarity", "Detail plus low-shelf warmth."));
+    v.push(mb(M::Clarity).s("amount", 0.3).s("freq", 5000.0).s("harm", 0.4).done("Air Only", "Only the very top is brought out."));
+    v.push(mb(M::Clarity).s("amount", 0.6).s("freq", 1200.0).s("harm", 0.0).s("warm", -0.3).done("Vocal Presence", "Detail focused on the vocal range, a little less low-end warmth."));
+    v.push(mb(M::Clarity).s("amount", 0.25).s("freq", 2500.0).s("harm", 0.1).s("mix", 0.6).done("Subtle Parallel", "Gentle effect blended in parallel."));
+
+    // ---------------------------------------------------------------- Codec Preview
+    v.push(mb(M::CodecPreview).s("fmt", 0.0).s("kbps", 128.0).done("MP3-like 128 kbps", "Hear a typical streaming-quality lossy encode."));
+    v.push(mb(M::CodecPreview).s("fmt", 0.0).s("kbps", 320.0).done("MP3-like 320 kbps", "Highest-quality MP3-style encode."));
+    v.push(mb(M::CodecPreview).s("fmt", 1.0).s("kbps", 96.0).done("AAC-like 96 kbps", "Low-bitrate AAC-style encode."));
+    v.push(mb(M::CodecPreview).s("fmt", 1.0).s("kbps", 256.0).done("AAC-like 256 kbps", "High-quality AAC-style encode."));
+    v.push(mb(M::CodecPreview).s("fmt", 2.0).s("kbps", 64.0).done("Opus-like 64 kbps", "Voice/streaming-style Opus encode."));
+    v.push(mb(M::CodecPreview).s("fmt", 0.0).s("kbps", 64.0).s("delta", 1.0).done("Hear the Difference (64 kbps)", "Plays only what a 64 kbps encode would remove."));
+    v.push(mb(M::CodecPreview).s("fmt", 0.0).s("kbps", 32.0).done("Worst Case 32 kbps", "Extreme low bitrate to expose weaknesses."));
 
     v
 }

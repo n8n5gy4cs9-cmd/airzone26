@@ -56,7 +56,13 @@ _Updated after every task; each task is committed to `main`._
 - 🧪 T37 Window handling: in-plugin resize removed (it made REAPER flicker and resize itself); old saved sizes ignored/sanitised; window size chosen from the "Window" menu, applied on reopen
 - 🧪 T38 Reference A/B player (WAV, level-matched, loop, seek, trim) + Reverb/Delay "Solo Wet"
 - 🧪 T39 Version 0.2.0, About window "by crowelian 2026"; 41 extra "Classic" full-chain presets (original, in the classic genre/source/style/loudness layout)
-- ⬜ T36 Still missing vs. Ozone (remaining after T38): Clarity module, Codec Preview, separate Tonal Balance Control plug-in, reference-track A/B player, ML stem separation, Maximizer "IRC" algorithms (ours are original AZ-1..5)
+- 🧪 T36a Clarity module (detail lift + harmonics + warmth) — 22nd module
+- 🧪 T36b Codec Preview module (MP3/AAC/Opus-style lossy simulation, delta listen) — 23rd module, in the shared FFT hub
+- 🧪 T36c AirZone 26 Tonal Balance: separate companion plug-in (5 region gauges, curve, genre/custom/WAV targets); new crate `crates/airzone-tonal`, bundled by build.sh and CI
+- 🧪 T36d Maximizer AZ-6 (clip + limit) and AZ-7 (smooth) algorithms
+- ❌ T36e ML stem separation: not shipped (no trained model can be bundled/tested here; Stem EQ stays DSP-based)
+- ❌ T36f Proprietary "IRC" limiter algorithms: cannot be reproduced; AirZone has seven original algorithms instead
+- ⬜ T36 (old note) Still missing vs. Ozone: Clarity module, Codec Preview, separate Tonal Balance Control plug-in, reference-track A/B player, ML stem separation, Maximizer "IRC" algorithms (ours are original AZ-1..5)
 
 Legend 🧪 = written, not compiled/tested yet.
 

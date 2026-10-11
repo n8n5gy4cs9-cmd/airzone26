@@ -19,15 +19,21 @@ pub enum LimiterMode {
     Aggressive,
     /// Crest-factor adaptive release.
     Adaptive,
+    /// Soft clipper in front of a short limiter: keeps drum transients, adds density.
+    Clipper,
+    /// Long lookahead and slow, very smooth release: gentle and "invisible".
+    Smooth,
 }
 
 impl LimiterMode {
-    pub const ALL: [LimiterMode; 5] = [
+    pub const ALL: [LimiterMode; 7] = [
         LimiterMode::Clean,
         LimiterMode::Balanced,
         LimiterMode::Multiband,
         LimiterMode::Aggressive,
         LimiterMode::Adaptive,
+        LimiterMode::Clipper,
+        LimiterMode::Smooth,
     ];
     pub fn name(&self) -> &'static str {
         match self {
@@ -36,6 +42,8 @@ impl LimiterMode {
             LimiterMode::Multiband => "AZ-3 Multiband",
             LimiterMode::Aggressive => "AZ-4 Aggressive",
             LimiterMode::Adaptive => "AZ-5 Adaptive",
+            LimiterMode::Clipper => "AZ-6 Clip + Limit",
+            LimiterMode::Smooth => "AZ-7 Smooth",
         }
     }
     fn lookahead_ms(&self) -> f32 {
@@ -45,6 +53,8 @@ impl LimiterMode {
             LimiterMode::Multiband => 2.5,
             LimiterMode::Aggressive => 3.0,
             LimiterMode::Adaptive => 2.0,
+            LimiterMode::Clipper => 1.0,
+            LimiterMode::Smooth => 5.0,
         }
     }
     fn bands(&self) -> usize {
@@ -310,9 +320,9 @@ impl Maximizer {
         };
         for i in 0..l.len() {
             let mut x = [l[i] * drive, r[i] * drive];
-            if self.mode == LimiterMode::Aggressive {
-                // saturating pre-stage; more drive -> more saturation
-                let c = (0.3 + 0.7 * self.character).min(1.0);
+            if self.mode == LimiterMode::Aggressive || self.mode == LimiterMode::Clipper {
+                // saturating pre-stage; more drive -> more saturation (the clipper always clips hard)
+                let c = if self.mode == LimiterMode::Clipper { (0.7 + 0.3 * self.character).min(1.0) } else { (0.3 + 0.7 * self.character).min(1.0) };
                 for v in &mut x {
                     *v = sat(*v, c);
                 }
@@ -324,8 +334,9 @@ impl Maximizer {
             // program-dependent release coefficient
             let depth_db = -lin_to_db(self.stages[0].cores[0].g_s);
             let rel_ms_scale = match self.mode {
-                LimiterMode::Clean | LimiterMode::Multiband | LimiterMode::Aggressive => 1.0,
+                LimiterMode::Clean | LimiterMode::Multiband | LimiterMode::Aggressive | LimiterMode::Clipper => 1.0,
                 LimiterMode::Balanced => 0.3 + 0.7 * (depth_db / 6.0).clamp(0.0, 1.0),
+                LimiterMode::Smooth => 0.8 + 1.0 * (depth_db / 6.0).clamp(0.0, 1.0),
                 LimiterMode::Adaptive => {
                     let a = x[0].abs().max(x[1].abs());
                     self.crest_env = a + (self.crest_env - a) * time_coeff(300.0, self.sr).max(0.0);

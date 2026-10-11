@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/airzone-dsp", "crates/airzone26", "xtask"]
+members = ["crates/airzone-dsp", "crates/airzone26", "crates/airzone-tonal", "xtask"]
 
 [workspace.package]
 version = "0.2.0"

@@ -150,6 +150,7 @@ impl AirZone {
         st(&sh.gr[GR_VCOMP], e.vcomp.meter_gr);
         st(&sh.gr[GR_VLIM], e.vlimiter.meter_gr);
         st(&sh.gr[GR_UNLIM], e.unlimiter.meter_boost_db);
+        st(&sh.clarity_boost, e.clarity.meter_boost_db);
         st(&sh.ref_pos, e.reference.position());
         st(&sh.ref_len_s, e.reference.length_seconds());
         st(&sh.ref_lufs, e.reference.track_lufs());

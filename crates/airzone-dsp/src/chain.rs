@@ -2,6 +2,7 @@
 
 use crate::eq::{DynamicEq, ParametricEq};
 use crate::fx::{Reverb, StereoDelay};
+use crate::clarity::Clarity;
 use crate::dynamics::MultibandDynamics;
 use crate::maximizer::{Dither, Maximizer};
 use crate::meter::{LoudnessMeter, SpectrumAnalyzer, StereoMeter};
@@ -43,9 +44,11 @@ pub enum ModuleId {
     VintageLimiter,
     Maximizer,
     PitchCorrect,
+    Clarity,
+    CodecPreview,
 }
 
-pub const MODULE_COUNT: usize = 21;
+pub const MODULE_COUNT: usize = 23;
 
 impl ModuleId {
     pub const ALL: [ModuleId; MODULE_COUNT] = [
@@ -70,6 +73,8 @@ impl ModuleId {
         ModuleId::VintageLimiter,
         ModuleId::Maximizer,
         ModuleId::PitchCorrect,
+        ModuleId::Clarity,
+        ModuleId::CodecPreview,
     ];
 
     pub fn index(self) -> usize {
@@ -101,19 +106,42 @@ impl ModuleId {
             ModuleId::VintageLimiter => "Vintage Limiter",
             ModuleId::Maximizer => "Maximizer",
             ModuleId::PitchCorrect => "Pitch Correction",
+            ModuleId::Clarity => "Clarity",
+            ModuleId::CodecPreview => "Codec Preview",
         }
     }
     pub fn is_spectral(self) -> bool {
-        matches!(self, ModuleId::StemEq | ModuleId::MatchEq | ModuleId::Stabilizer | ModuleId::SpectralShaper)
+        matches!(self, ModuleId::StemEq | ModuleId::MatchEq | ModuleId::Stabilizer | ModuleId::SpectralShaper | ModuleId::CodecPreview)
     }
 }
 
-/// Default signal-flow order: pitch correction first, then the `ModuleId` declaration order.
+/// Default signal-flow order: pitch correction first, limiting last, codec preview at the very end.
 pub fn default_order() -> [ModuleId; MODULE_COUNT] {
-    let mut o = ModuleId::ALL;
-    // Pitch correction works best first in the chain.
-    o.rotate_right(1);
-    o
+    [
+        ModuleId::PitchCorrect,
+        ModuleId::Unlimiter,
+        ModuleId::StemEq,
+        ModuleId::MatchEq,
+        ModuleId::Equalizer,
+        ModuleId::DynamicEq,
+        ModuleId::Stabilizer,
+        ModuleId::SpectralShaper,
+        ModuleId::BassControl,
+        ModuleId::LowEndFocus,
+        ModuleId::Dynamics,
+        ModuleId::VintageComp,
+        ModuleId::VintageEq,
+        ModuleId::VintageTape,
+        ModuleId::Clarity,
+        ModuleId::Exciter,
+        ModuleId::Impact,
+        ModuleId::Imager,
+        ModuleId::Delay,
+        ModuleId::Reverb,
+        ModuleId::VintageLimiter,
+        ModuleId::Maximizer,
+        ModuleId::CodecPreview,
+    ]
 }
 
 /// Validate and repair an order array so it is a permutation of all modules.
@@ -156,6 +184,7 @@ pub struct Engine {
     pub reverb: Reverb,
     pub vlimiter: VintageLimiter,
     pub maximizer: Maximizer,
+    pub clarity: Clarity,
     pub dither: Dither,
     pub pitch: PitchCorrector,
     /// Pitch correction runs as global tuning inside the shared FFT hub.
@@ -212,6 +241,7 @@ impl Engine {
             reverb: Reverb::default(),
             vlimiter: VintageLimiter::default(),
             maximizer: Maximizer::default(),
+            clarity: Clarity::default(),
             dither: Dither::default(),
             pitch: PitchCorrector::new(sr),
             pitch_full_song: false,
@@ -262,6 +292,7 @@ impl Engine {
         self.reverb.prepare(sr);
         self.vlimiter.prepare(sr);
         self.maximizer.prepare(sr);
+        self.clarity.prepare(sr);
         self.pitch.prepare(sr);
         self.vocal_focus.prepare(sr);
         self.match_gain_db = 0.0;
@@ -340,7 +371,7 @@ impl Engine {
                 self.vocal_focus.process(l, r);
             }
             ModuleId::PitchCorrect if !self.pitch_full_song => self.pitch.process(l, r),
-            ModuleId::StemEq | ModuleId::MatchEq | ModuleId::Stabilizer | ModuleId::SpectralShaper | ModuleId::PitchCorrect => {
+            ModuleId::StemEq | ModuleId::MatchEq | ModuleId::Stabilizer | ModuleId::SpectralShaper | ModuleId::CodecPreview | ModuleId::PitchCorrect => {
                 if !*hub_done {
                     *hub_done = true;
                     self.hub.tuning.enabled = self.enabled[ModuleId::PitchCorrect.index()] && self.pitch_full_song;
@@ -348,6 +379,7 @@ impl Engine {
                     self.hub.match_eq.enabled = self.enabled[ModuleId::MatchEq.index()];
                     self.hub.stabilizer.enabled = self.enabled[ModuleId::Stabilizer.index()];
                     self.hub.shaper.enabled = self.enabled[ModuleId::SpectralShaper.index()];
+                    self.hub.codec.enabled = self.enabled[ModuleId::CodecPreview.index()];
                     self.hub.process(l, r);
                 }
             }
@@ -366,6 +398,7 @@ impl Engine {
             ModuleId::Reverb => self.reverb.process(l, r),
             ModuleId::VintageLimiter => self.vlimiter.process(l, r),
             ModuleId::Maximizer => self.maximizer.process(l, r),
+            ModuleId::Clarity => self.clarity.process(l, r),
         }
     }
 
