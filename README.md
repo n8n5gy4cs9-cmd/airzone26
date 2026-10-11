@@ -1,4 +1,4 @@
-# AirZone 26
+# AirZone 26  (v0.2.0, by crowelian 2026)
 
 Full mastering suite for **REAPER** (and any VST3 / CLAP host) — written in **Rust** with
 [NIH-plug](https://github.com/robbert-vdh/nih-plug) and egui.

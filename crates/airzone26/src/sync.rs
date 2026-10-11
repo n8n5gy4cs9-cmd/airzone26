@@ -306,6 +306,7 @@ pub fn apply(v: &Values, order: Option<&[u8]>, e: &mut Engine) {
     e.delay.lowcut_hz = v.f("dl_lc");
     e.delay.highcut_hz = v.f("dl_hc");
     e.delay.mix = v.f("dl_mix");
+    e.delay.wet_only = v.b("dl_solo");
 
     e.reverb.room_size = v.f("rv_room");
     e.reverb.damping = v.f("rv_damp");
@@ -313,6 +314,7 @@ pub fn apply(v: &Values, order: Option<&[u8]>, e: &mut Engine) {
     e.reverb.predelay_ms = v.f("rv_pre");
     e.reverb.lowcut_hz = v.f("rv_lc");
     e.reverb.mix = v.f("rv_mix");
+    e.reverb.wet_only = v.b("rv_solo");
 
     e.vlimiter.input_db = v.f("vl_in");
     e.vlimiter.output_db = v.f("vl_out");

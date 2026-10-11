@@ -12,6 +12,8 @@ pub struct StereoDelay {
     pub lowcut_hz: f32,
     pub highcut_hz: f32,
     pub mix: f32,
+    /// Output only the echoes (no dry signal) so they can be auditioned on their own.
+    pub wet_only: bool,
     lines: [DelayLine; 2],
     hp: [Biquad; 2],
     lp: [Biquad; 2],
@@ -29,6 +31,7 @@ impl Default for StereoDelay {
             lowcut_hz: 200.0,
             highcut_hz: 6000.0,
             mix: 0.0,
+            wet_only: false,
             lines: [DelayLine::new(4), DelayLine::new(4)],
             hp: [Biquad::default(); 2],
             lp: [Biquad::default(); 2],
@@ -74,8 +77,15 @@ impl StereoDelay {
             let fr = self.lp[1].process(self.hp[1].process(in_r));
             self.lines[0].push(fl);
             self.lines[1].push(fr);
-            l[i] += wl * self.mix;
-            r[i] += wr * self.mix;
+            if self.wet_only {
+                // solo the echoes: dry signal removed, level independent of a tiny Mix setting
+                let g = self.mix.max(0.25);
+                l[i] = wl * g;
+                r[i] = wr * g;
+            } else {
+                l[i] += wl * self.mix;
+                r[i] += wr * self.mix;
+            }
         }
     }
 }
@@ -132,6 +142,8 @@ pub struct Reverb {
     pub predelay_ms: f32,
     pub mix: f32,
     pub lowcut_hz: f32,
+    /// Solo the reverb: output only the wet signal (no dry) so the tail can be heard on its own.
+    pub wet_only: bool,
     combs: [Vec<Comb>; 2],
     allpasses: [Vec<Allpass>; 2],
     pre: [DelayLine; 2],
@@ -149,6 +161,7 @@ impl Default for Reverb {
             predelay_ms: 10.0,
             mix: 0.0,
             lowcut_hz: 150.0,
+            wet_only: false,
             combs: [Vec::new(), Vec::new()],
             allpasses: [Vec::new(), Vec::new()],
             pre: [DelayLine::new(4), DelayLine::new(4)],
@@ -180,7 +193,7 @@ impl Reverb {
         0
     }
     pub fn process(&mut self, l: &mut [f32], r: &mut [f32]) {
-        if self.mix <= 0.0 {
+        if self.mix <= 0.0 && !self.wet_only {
             return;
         }
         if self.last_lc != self.lowcut_hz {
@@ -211,9 +224,16 @@ impl Reverb {
             }
             let wl = out[0] * wet1 + out[1] * wet2;
             let wr = out[1] * wet1 + out[0] * wet2;
-            let g = self.mix * db_to_lin(6.0) * 3.0;
-            l[i] += wl * g;
-            r[i] += wr * g;
+            if self.wet_only {
+                // level of the solo'd tail does not collapse when Mix is set very low
+                let g = self.mix.max(0.25) * db_to_lin(6.0) * 3.0;
+                l[i] = wl * g;
+                r[i] = wr * g;
+            } else {
+                let g = self.mix * db_to_lin(6.0) * 3.0;
+                l[i] += wl * g;
+                r[i] += wr * g;
+            }
         }
     }
 }

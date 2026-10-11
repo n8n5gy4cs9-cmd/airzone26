@@ -900,6 +900,8 @@ pub struct DelayP {
     pub highcut: FloatParam,
     #[id = "mix"]
     pub mix: FloatParam,
+    #[id = "solo"]
+    pub wet_solo: BoolParam,
 }
 
 impl Default for DelayP {
@@ -912,6 +914,7 @@ impl Default for DelayP {
             lowcut: hz_param("Low Cut", 200.0, 20.0, 2000.0),
             highcut: hz_param("High Cut", 6000.0, 1000.0, 20000.0),
             mix: pct_param("Mix", 0.15),
+            wet_solo: on_param("Solo Wet (hear only the echoes)", false),
         }
     }
 }
@@ -930,6 +933,8 @@ pub struct ReverbP {
     pub lowcut: FloatParam,
     #[id = "mix"]
     pub mix: FloatParam,
+    #[id = "solo"]
+    pub wet_solo: BoolParam,
 }
 
 impl Default for ReverbP {
@@ -941,6 +946,7 @@ impl Default for ReverbP {
             predelay: ms_param("Pre-Delay", 10.0, 0.0, 200.0),
             lowcut: hz_param("Low Cut", 150.0, 20.0, 1000.0),
             mix: pct_param("Mix", 0.1),
+            wet_solo: on_param("Solo Wet (hear only the reverb)", false),
         }
     }
 }
@@ -1190,7 +1196,8 @@ pub struct UiPrefs {
 
 #[derive(Params)]
 pub struct AirZoneParams {
-    #[persist = "editor-state"]
+    // new key: sizes stored by older builds (including broken resizes) are ignored
+    #[persist = "editor-size-v2"]
     pub editor_state: Arc<EguiState>,
     #[persist = "chain-order"]
     pub order: Arc<RwLock<Vec<u8>>>,
@@ -1260,6 +1267,7 @@ impl Default for AirZoneParams {
     fn default() -> Self {
         Self {
             editor_state: EguiState::from_size(1040, 680),
+            // (default window size; users can pick another one from the "Window" menu)
             order: Arc::new(RwLock::new(airzone_dsp::chain::default_order().iter().map(|m| m.index() as u8).collect())),
             match_data: Arc::new(Mutex::new(MatchData::default())),
             ui_prefs: Arc::new(Mutex::new(UiPrefs::default())),

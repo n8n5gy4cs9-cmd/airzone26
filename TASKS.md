@@ -53,7 +53,10 @@ _Updated after every task; each task is committed to `main`._
 - 🧪 T33 Pitch correction: diagnostics banner (module off / no pitch found), friendlier defaults (YIN threshold 0.2, voicing confidence 0.6), new mode **Vocal in Full Mix** (stem-estimated vocal tuned on its own and recombined)
 - 🧪 T34 Ozone-parity additions: A/B compare slots, tonal-target overlay on the spectrum, vectorscope, loudness-matched bypass
 - 🧪 T35 Manual template updated (module presets, A/B, vectorscope, assistant logic, resizing); run `cargo run -p airzone26 --example gen_docs` to regenerate docs/manual.html
-- ⬜ T36 Still missing vs. Ozone: Clarity module, Codec Preview, separate Tonal Balance Control plug-in, reference-track A/B player, ML stem separation, Maximizer "IRC" algorithms (ours are original AZ-1..5)
+- 🧪 T37 Window handling: in-plugin resize removed (it made REAPER flicker and resize itself); old saved sizes ignored/sanitised; window size chosen from the "Window" menu, applied on reopen
+- 🧪 T38 Reference A/B player (WAV, level-matched, loop, seek, trim) + Reverb/Delay "Solo Wet"
+- 🧪 T39 Version 0.2.0, About window "by crowelian 2026"; 41 extra "Classic" full-chain presets (original, in the classic genre/source/style/loudness layout)
+- ⬜ T36 Still missing vs. Ozone (remaining after T38): Clarity module, Codec Preview, separate Tonal Balance Control plug-in, reference-track A/B player, ML stem separation, Maximizer "IRC" algorithms (ours are original AZ-1..5)
 
 Legend 🧪 = written, not compiled/tested yet.
 

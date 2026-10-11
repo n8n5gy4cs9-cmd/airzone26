@@ -104,6 +104,23 @@ impl AirZone {
             e.in_meter.reset();
             e.out_meter.reset();
         }
+        // reference A/B player
+        e.reference.monitor = sh.ref_monitor.load(Ordering::Relaxed);
+        e.reference.playing = sh.ref_playing.load(Ordering::Relaxed);
+        e.reference.looping = sh.ref_loop.load(Ordering::Relaxed);
+        e.reference.level_match = sh.ref_level_match.load(Ordering::Relaxed);
+        e.reference.trim_db = sh.ref_trim_db.load(Ordering::Relaxed);
+        let seek = sh.ref_seek.load(Ordering::Relaxed);
+        if seek >= 0.0 {
+            e.reference.seek(seek);
+            sh.ref_seek.store(-1.0, Ordering::Relaxed);
+        }
+        // (the GUI keeps its own Arc of every loaded track, so dropping the old one here never frees)
+        let new_track = sh.pending_ref_track.try_lock().and_then(|mut p| p.take());
+        if let Some(t) = new_track {
+            e.reference.set_track(Some(t));
+        }
+
         let taken = sh.pending_reference.try_lock().and_then(|mut p| p.take());
         if let Some((profile, name)) = taken {
             e.hub.match_eq.set_reference(profile);
@@ -133,6 +150,11 @@ impl AirZone {
         st(&sh.gr[GR_VCOMP], e.vcomp.meter_gr);
         st(&sh.gr[GR_VLIM], e.vlimiter.meter_gr);
         st(&sh.gr[GR_UNLIM], e.unlimiter.meter_boost_db);
+        st(&sh.ref_pos, e.reference.position());
+        st(&sh.ref_len_s, e.reference.length_seconds());
+        st(&sh.ref_lufs, e.reference.track_lufs());
+        st(&sh.ref_gain_db, e.reference.applied_gain_db());
+        sh.ref_playing.store(e.reference.playing, Ordering::Relaxed);
         for i in 0..airzone_dsp::meter::SPEC_POINTS {
             st(&sh.spectrum_in[i], e.spectrum_in.out[i]);
             st(&sh.spectrum_out[i], e.spectrum_out.out[i]);
@@ -175,7 +197,7 @@ impl AirZone {
 
 impl Plugin for AirZone {
     const NAME: &'static str = "AirZone 26";
-    const VENDOR: &'static str = "AirZone";
+    const VENDOR: &'static str = "crowelian";
     const URL: &'static str = "https://github.com/n8n5gy4cs9-cmd/airzone26";
     const EMAIL: &'static str = "";
     const VERSION: &'static str = env!("CARGO_PKG_VERSION");

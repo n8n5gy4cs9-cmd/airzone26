@@ -6,6 +6,7 @@ use crate::dynamics::MultibandDynamics;
 use crate::maximizer::{Dither, Maximizer};
 use crate::meter::{LoudnessMeter, SpectrumAnalyzer, StereoMeter};
 use crate::pitch::PitchCorrector;
+use crate::reference::ReferencePlayer;
 use crate::saturation::Exciter;
 use crate::spectral::{Capture, SpectralHub};
 use crate::stereo::{BassControl, Imager};
@@ -165,6 +166,8 @@ pub struct Engine {
     /// Loudness-matched bypass: the bypassed signal is level-matched to the processed one.
     pub gain_match: bool,
     match_gain_db: f32,
+    /// Reference-track A/B player (replaces the master output while monitored).
+    pub reference: ReferencePlayer,
     /// Last `SCOPE_N` output samples for the vectorscope.
     pub scope_l: Vec<f32>,
     pub scope_r: Vec<f32>,
@@ -216,6 +219,7 @@ impl Engine {
             vocal_focus: VocalFocus::new(sr),
             gain_match: false,
             match_gain_db: 0.0,
+            reference: ReferencePlayer::new(sr),
             scope_l: vec![0.0; SCOPE_N],
             scope_r: vec![0.0; SCOPE_N],
             enabled: [false; MODULE_COUNT],
@@ -261,6 +265,7 @@ impl Engine {
         self.pitch.prepare(sr);
         self.vocal_focus.prepare(sr);
         self.match_gain_db = 0.0;
+        self.reference.set_sample_rate(sr);
         self.dither.reset();
         self.in_meter = LoudnessMeter::new(sr);
         self.out_meter = LoudnessMeter::new(sr);
@@ -426,6 +431,9 @@ impl Engine {
                 r[i] += (self.scratch_r[i] * match_gain - r[i]) * self.bypass_mix;
             }
         }
+
+        // reference A/B (so meters, spectrum and scope show what is being monitored)
+        self.reference.process(l, r, self.out_meter.integrated);
 
         // vectorscope history
         if n > 0 {

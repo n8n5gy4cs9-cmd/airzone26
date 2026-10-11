@@ -67,6 +67,21 @@ pub struct Shared {
     pub assist_cmd: AtomicU8,
     pub pending_reference: Mutex<Option<(SpectrumProfile, String)>>,
 
+    // reference A/B player (GUI -> audio)
+    pub pending_ref_track: Mutex<Option<std::sync::Arc<airzone_dsp::reference::ReferenceTrack>>>,
+    pub ref_monitor: AtomicBool,
+    pub ref_playing: AtomicBool,
+    pub ref_loop: AtomicBool,
+    pub ref_level_match: AtomicBool,
+    pub ref_trim_db: AtomicF32,
+    /// Seek target 0..1; negative = no request.
+    pub ref_seek: AtomicF32,
+    // reference A/B player (audio -> GUI)
+    pub ref_pos: AtomicF32,
+    pub ref_len_s: AtomicF32,
+    pub ref_lufs: AtomicF32,
+    pub ref_gain_db: AtomicF32,
+
     // audio -> GUI results
     pub match_progress: [AtomicU32; 2],
     pub match_curve: Mutex<Vec<f32>>,
@@ -115,6 +130,17 @@ impl Shared {
             reset_meters: AtomicBool::new(false),
             assist_cmd: AtomicU8::new(ASSIST_IDLE),
             pending_reference: Mutex::new(None),
+            pending_ref_track: Mutex::new(None),
+            ref_monitor: AtomicBool::new(false),
+            ref_playing: AtomicBool::new(false),
+            ref_loop: AtomicBool::new(true),
+            ref_level_match: AtomicBool::new(true),
+            ref_trim_db: af(0.0),
+            ref_seek: af(-1.0),
+            ref_pos: af(0.0),
+            ref_len_s: af(0.0),
+            ref_lufs: af(-70.0),
+            ref_gain_db: af(0.0),
             match_progress: [AtomicU32::new(0), AtomicU32::new(0)],
             match_curve: Mutex::new(vec![0.0; airzone_dsp::spectral::MATCH_BANDS]),
             match_curve_dirty: AtomicBool::new(false),

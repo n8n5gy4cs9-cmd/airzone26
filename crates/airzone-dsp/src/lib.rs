@@ -9,6 +9,7 @@ pub mod fx;
 pub mod maximizer;
 pub mod meter;
 pub mod pitch;
+pub mod reference;
 pub mod saturation;
 pub mod spectral;
 pub mod stft;

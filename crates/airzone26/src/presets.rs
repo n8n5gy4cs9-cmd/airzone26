@@ -588,6 +588,276 @@ pub fn factory() -> Vec<Preset> {
         b.mx(AZ2, 3.0, -1.0, 150.0);
     }));
 
+    // ------------------------------------------------------------------ Classic Suite
+    // A large second library in the spirit of the classic "one preset per genre / source / style"
+    // mastering suites: original settings (no third-party presets are copied).
+    v.push(preset("Classic - Pop Bright & Punchy", "Classic Genre", "Forward vocal, snappy drums, glossy top.", |b| {
+        b.hp(28.0, S24);
+        b.eq(2, LSHELF, 100.0, 0.8, 0.7).eq(3, BELL, 320.0, -1.0, 1.0).eq(5, BELL, 3200.0, 1.0, 0.9).eq(7, HSHELF, 11000.0, 2.0, 0.7);
+        b.impact([1.5, 1.0, 1.0], [0.0, 0.0, 0.0]);
+        b.dyn3([-22.0, -20.0, -19.0], [2.0, 2.0, 2.2], [0.5, 0.0, 0.0]);
+        b.exc(TAPE, [0.0, 0.1, 0.2, 0.3], 6.0);
+        b.img([1.0, 1.05, 1.2, 1.35], 0.0).mono_sub();
+        b.mx(AZ2, 5.0, -0.8, 125.0);
+    }));
+    v.push(preset("Classic - Pop Warm & Round", "Classic Genre", "Soft highs, rounded lows, relaxed loudness.", |b| {
+        b.hp(26.0, S24);
+        b.eq(2, LSHELF, 110.0, 1.0, 0.7).eq(5, BELL, 4500.0, -0.8, 0.8).eq(7, HSHELF, 9500.0, 0.5, 0.6);
+        b.veq(2.0, 2.0, 0.0, 3.0, 1.0, 5.0, 1.0, 0.0);
+        b.vcomp(-18.0, 2.0, 25.0, 300.0, 1.5, 0.3);
+        b.mono_sub();
+        b.mx(AZ2, 3.5, -1.0, 150.0);
+    }));
+    v.push(preset("Classic - Rock Big & Raw", "Classic Genre", "Wide guitars, hard snare, controlled low end.", |b| {
+        b.hp(32.0, S24);
+        b.eq(3, BELL, 300.0, -1.2, 1.0).eq(5, BELL, 2800.0, 1.0, 0.9).eq(7, HSHELF, 10000.0, 1.0, 0.7);
+        b.impact([2.5, 1.0, 1.5], [0.0, 0.0, 0.0]);
+        b.dyn3([-23.0, -21.0, -21.0], [2.4, 2.4, 2.4], [0.5, 0.0, 0.0]);
+        b.tape(4.0, 1.0, 0.6, 0.1);
+        b.img([1.0, 1.0, 1.15, 1.25], 0.0).mono_sub();
+        b.mx(AZ5, 5.5, -0.7, 115.0);
+    }));
+    v.push(preset("Classic - Indie Lo-Fi Charm", "Classic Genre", "Slightly dark, saturated, imperfect.", |b| {
+        b.hp(40.0, S12).lp(14000.0, S12);
+        b.tape(6.0, 0.0, 0.8, 0.5).s("vt_wow", 0.1);
+        b.vcomp(-18.0, 2.5, 25.0, 300.0, 2.0, 0.4);
+        b.mx(AZ1, 3.0, -1.0, 170.0);
+    }));
+    v.push(preset("Classic - Hip-Hop Knock", "Classic Genre", "Heavy, tight 808s and a crisp vocal.", |b| {
+        b.hp(22.0, S24);
+        b.eq(2, LSHELF, 55.0, 1.5, 0.7).eq(3, BELL, 260.0, -1.2, 1.0).eq(5, BELL, 3800.0, 1.0, 0.9);
+        b.bass(1.0, 1.0, 0.0, 2.0, 0.4).s("bc_subf", 70.0);
+        b.on(&["lef"]).s("lf_freq", 100.0).s("lf_punch", 2.0).s("lf_contrast", 0.4);
+        b.dyn3([-24.0, -21.0, -21.0], [2.8, 2.2, 2.2], [0.5, 0.0, 0.0]);
+        b.mx(AZ3, 6.5, -0.5, 100.0);
+    }));
+    v.push(preset("Classic - R&B Velvet", "Classic Genre", "Silky vocals, deep but soft bass.", |b| {
+        b.hp(24.0, S24);
+        b.eq(2, LSHELF, 70.0, 1.2, 0.7).eq(4, BELL, 600.0, -0.8, 1.0).eq(7, HSHELF, 10000.0, 1.0, 0.6);
+        b.veq(2.0, 3.0, 1.0, 4.0, 2.0, 6.0, 1.0, 0.0).s("ve_tube", 0.25);
+        b.vcomp(-20.0, 2.0, 30.0, 350.0, 2.0, 0.3);
+        b.img([1.0, 1.0, 1.15, 1.2], 0.1).mono_sub();
+        b.mx(AZ2, 4.0, -1.0, 160.0);
+    }));
+    v.push(preset("Classic - Dance Club Pressure", "Classic Genre", "Solid kick, tight sub, bright hats, club loud.", |b| {
+        b.hp(28.0, S48);
+        b.eq(2, LSHELF, 65.0, 1.2, 0.7).eq(3, BELL, 260.0, -1.0, 1.0).eq(7, HSHELF, 11500.0, 1.5, 0.7);
+        b.bass(1.0, 0.0, 0.0, 1.2, 0.4).s("bc_subf", 80.0);
+        b.dyn3([-25.0, -23.0, -23.0], [2.6, 2.6, 2.6], [1.0, 0.5, 0.5]);
+        b.exc(RETRO, [0.0, 0.1, 0.2, 0.3], 8.0);
+        b.img([1.0, 1.0, 1.3, 1.4], 0.0);
+        b.mx(AZ4, 9.0, -0.4, 90.0).s("mx_char", 0.3);
+    }));
+    v.push(preset("Classic - Chill Electronic", "Classic Genre", "Soft, wide, deep; dynamics kept.", |b| {
+        b.hp(24.0, S24);
+        b.eq(2, LSHELF, 80.0, 0.8, 0.7).eq(7, HSHELF, 10000.0, 1.0, 0.6);
+        b.dyn3([-26.0, -24.0, -24.0], [1.5, 1.5, 1.5], [0.0, 0.0, 0.0]);
+        b.img([1.0, 1.15, 1.3, 1.4], 0.15).mono_sub();
+        b.on(&["reverb"]).s("rv_room", 0.3).s("rv_mix", 0.04).s("rv_lc", 300.0);
+        b.mx(AZ1, 3.0, -1.0, 200.0);
+    }));
+    v.push(preset("Classic - Country Natural", "Classic Genre", "Clear vocal, open acoustic strings, natural dynamics.", |b| {
+        b.hp(30.0, S12);
+        b.eq(3, BELL, 300.0, -0.8, 0.9).eq(5, BELL, 3500.0, 1.0, 0.8).eq(7, HSHELF, 11000.0, 1.0, 0.6);
+        b.dyn3([-26.0, -24.0, -24.0], [1.5, 1.5, 1.4], [0.0, 0.0, 0.0]);
+        b.tape(2.0, 2.0, 0.4, 0.0);
+        b.mx(AZ1, 3.0, -1.0, 180.0);
+    }));
+    v.push(preset("Classic - Jazz Trio", "Classic Genre", "Natural balance, minimal processing, gentle air.", |b| {
+        b.hp(30.0, S12);
+        b.eq(7, HSHELF, 12000.0, 1.0, 0.6);
+        b.veq(2.0, 1.0, 0.0, 4.0, 1.0, 6.0, 1.0, 0.0);
+        b.mx(AZ1, 1.5, -1.0, 250.0);
+    }));
+    v.push(preset("Classic - Classical Concert Hall", "Classic Genre", "Wide, deep, almost untouched; very gentle level.", |b| {
+        b.hp(20.0, S12);
+        b.eq(7, HSHELF, 12000.0, 0.5, 0.6);
+        b.img([1.0, 1.05, 1.1, 1.15], 0.0);
+        b.mx(AZ1, 1.0, -1.0, 300.0);
+    }));
+    v.push(preset("Classic - Film Score Epic", "Classic Genre", "Huge low end, wide strings, controlled peaks.", |b| {
+        b.hp(24.0, S24);
+        b.eq(2, LSHELF, 70.0, 1.2, 0.7).eq(7, HSHELF, 9000.0, 0.8, 0.6);
+        b.img([1.0, 1.1, 1.25, 1.35], 0.2).mono_sub();
+        b.dyn3([-27.0, -25.0, -25.0], [1.5, 1.5, 1.4], [0.0, 0.0, 0.0]);
+        b.mx(AZ1, 2.5, -1.0, 250.0);
+    }));
+    v.push(preset("Classic - Metal Crush", "Classic Genre", "Tight double-kick, scooped mids, controlled fizz.", |b| {
+        b.hp(35.0, S48);
+        b.eq(3, BELL, 400.0, -1.5, 1.0).eq(5, BELL, 3500.0, 1.0, 1.0).eq(8, LPF, 16000.0, 0.0, 0.7);
+        b.on(&["lef"]).s("lf_freq", 110.0).s("lf_punch", 2.0).s("lf_sustain", -3.0).s("lf_contrast", 0.5);
+        b.dyn3([-25.0, -23.0, -23.0], [3.0, 3.0, 3.0], [1.0, 0.5, 0.5]);
+        b.exc(TUBE, [0.1, 0.2, 0.2, 0.1], 8.0);
+        b.mono_sub();
+        b.mx(AZ4, 8.0, -0.5, 90.0).s("mx_char", 0.4);
+    }));
+    v.push(preset("Classic - Reggae Dub Weight", "Classic Genre", "Deep bass, dark top, warm tape.", |b| {
+        b.hp(30.0, S24).lp(15000.0, S12);
+        b.eq(2, LSHELF, 65.0, 1.8, 0.7).eq(5, BELL, 3500.0, -0.8, 0.8);
+        b.tape(5.0, 0.0, 0.7, 0.2);
+        b.dyn3([-24.0, -22.0, -22.0], [2.0, 1.8, 1.8], [0.5, 0.0, 0.0]);
+        b.mono_sub();
+        b.mx(AZ2, 4.0, -1.0, 150.0);
+    }));
+    v.push(preset("Classic - Latin Percussion Sparkle", "Classic Genre", "Lively percussion and horns with open highs.", |b| {
+        b.hp(30.0, S24);
+        b.eq(3, BELL, 300.0, -0.8, 0.9).eq(6, BELL, 6000.0, 1.0, 0.9).eq(7, HSHELF, 11000.0, 1.5, 0.7);
+        b.impact([2.0, 1.5, 2.0], [0.0, 0.0, 0.0]);
+        b.dyn3([-24.0, -22.0, -22.0], [2.0, 2.0, 2.0], [0.5, 0.0, 0.0]);
+        b.mono_sub();
+        b.mx(AZ2, 4.5, -0.8, 130.0);
+    }));
+    v.push(preset("Classic - Gospel & Choir", "Classic Genre", "Warm, wide, natural voices with gentle lift.", |b| {
+        b.hp(40.0, S24);
+        b.eq(3, BELL, 280.0, -0.8, 0.9).eq(5, BELL, 3000.0, 0.8, 0.8).eq(7, HSHELF, 10000.0, 1.0, 0.6);
+        b.img([1.0, 1.1, 1.2, 1.25], 0.0).mono_sub();
+        b.mx(AZ1, 2.5, -1.0, 200.0);
+    }));
+    v.push(preset("Classic - Singer-Songwriter", "Classic Genre", "Intimate voice and guitar, close and warm.", |b| {
+        b.hp(40.0, S24);
+        b.eq(3, BELL, 250.0, -1.0, 0.9).eq(5, BELL, 4000.0, 0.8, 0.8).eq(7, HSHELF, 11000.0, 0.8, 0.6);
+        b.vcomp(-20.0, 2.2, 25.0, 300.0, 1.5, 0.2);
+        b.mx(AZ1, 3.0, -1.0, 200.0);
+    }));
+
+    // Source / instrument-group masters (use on stems or subgroup bounces)
+    v.push(preset("Classic - Full Drum Bus", "Classic Source", "Snap, weight and glue for a drum submix.", |b| {
+        b.hp(30.0, S24);
+        b.eq(2, LSHELF, 80.0, 1.0, 0.7).eq(3, BELL, 350.0, -1.5, 1.0).eq(6, BELL, 5500.0, 1.0, 0.9);
+        b.impact([3.0, 2.0, 2.0], [0.0, 0.0, 0.0]);
+        b.vcomp(-22.0, 4.0, 10.0, 150.0, 3.0, 0.3);
+        b.mx(AZ2, 2.0, -1.0, 100.0);
+    }));
+    v.push(preset("Classic - Bass Guitar Master", "Classic Source", "Even, solid bass with a little grit.", |b| {
+        b.hp(28.0, S24);
+        b.eq(2, LSHELF, 80.0, 1.0, 0.7).eq(4, BELL, 700.0, 1.0, 1.0).eq(5, BELL, 2000.0, -1.0, 1.0);
+        b.vcomp(-22.0, 4.0, 20.0, 200.0, 3.0, 0.4);
+        b.exc(TUBE, [0.3, 0.2, 0.0, 0.0], 8.0);
+        b.mx(AZ1, 1.5, -1.0, 150.0);
+    }));
+    v.push(preset("Classic - Vocal Bus Polish", "Classic Source", "Leveled, present, gently de-essed vocal bus.", |b| {
+        b.hp(80.0, S24);
+        b.eq(3, BELL, 300.0, -1.0, 1.0).eq(5, BELL, 3500.0, 1.2, 0.9).eq(7, HSHELF, 11000.0, 1.2, 0.7);
+        b.dq(1, 7000.0, 3.0, -30.0, -5.0, 4.0);
+        b.vcomp(-22.0, 3.0, 15.0, 250.0, 3.0, 0.25);
+        b.mx(AZ1, 1.5, -1.0, 150.0);
+    }));
+    v.push(preset("Classic - Guitar Bus Width", "Classic Source", "Wider guitars with the lows kept tight.", |b| {
+        b.hp(70.0, S24);
+        b.eq(3, BELL, 350.0, -1.2, 1.0).eq(5, BELL, 3000.0, 0.8, 0.9);
+        b.img([0.0, 1.2, 1.4, 1.5], 0.2);
+        b.vcomp(-22.0, 2.5, 20.0, 250.0, 2.0, 0.3);
+    }));
+    v.push(preset("Classic - Keys & Piano Clarity", "Classic Source", "Clear, open piano and keys.", |b| {
+        b.hp(40.0, S12);
+        b.eq(3, BELL, 300.0, -1.0, 0.9).eq(6, BELL, 5000.0, 0.8, 0.9).eq(7, HSHELF, 11000.0, 1.2, 0.7);
+        b.img([1.0, 1.1, 1.2, 1.2], 0.0);
+    }));
+    v.push(preset("Classic - Synth Pad Space", "Classic Source", "Wide, lush pads; side-only air.", |b| {
+        b.hp(60.0, S24);
+        b.eq(7, HSHELF, 9000.0, 2.0, 0.7).eq_pl(7, SIDE);
+        b.img([0.8, 1.2, 1.4, 1.6], 0.3);
+        b.impact([0.0, 0.0, 0.0], [0.0, 2.0, 2.0]);
+    }));
+    v.push(preset("Classic - Strings & Orchestra Glue", "Classic Source", "Smooth, blended strings with natural dynamics.", |b| {
+        b.hp(35.0, S12);
+        b.eq(4, BELL, 500.0, -0.8, 0.9).eq(7, HSHELF, 11000.0, 0.8, 0.6);
+        b.dyn3([-28.0, -26.0, -26.0], [1.4, 1.4, 1.3], [0.0, 0.0, 0.0]);
+        b.on(&["reverb"]).s("rv_room", 0.5).s("rv_damp", 0.6).s("rv_mix", 0.04).s("rv_lc", 250.0);
+    }));
+    v.push(preset("Classic - Acoustic Guitar Sparkle", "Classic Source", "Open, shimmering acoustic guitar.", |b| {
+        b.hp(70.0, S24);
+        b.eq(3, BELL, 250.0, -1.0, 1.0).eq(6, BELL, 5500.0, 1.0, 0.9).eq(7, HSHELF, 12000.0, 1.5, 0.7);
+        b.vcomp(-22.0, 2.0, 25.0, 300.0, 1.0, 0.2);
+    }));
+    v.push(preset("Classic - Podcast Broadcast Voice", "Classic Source", "Clear, even, broadcast-ready speech.", |b| {
+        b.hp(90.0, S24);
+        b.eq(2, BELL, 220.0, -1.5, 1.0).eq(4, BELL, 3500.0, 1.5, 0.9).eq(7, HSHELF, 9000.0, 1.0, 0.7);
+        b.dq(1, 6500.0, 3.0, -30.0, -6.0, 3.0);
+        b.dyn3([-28.0, -26.0, -26.0], [3.0, 3.0, 2.5], [2.0, 1.0, 1.0]);
+        b.mx(AZ2, 5.0, -1.5, 120.0);
+    }));
+
+    // Style / character masters
+    v.push(preset("Classic - Open & Transparent", "Classic Style", "As little as possible: subtle tone and safe peaks.", |b| {
+        b.hp(24.0, S12);
+        b.eq(7, HSHELF, 12000.0, 0.8, 0.6);
+        b.mx(AZ1, 2.0, -1.0, 250.0);
+    }));
+    v.push(preset("Classic - Warm Analog Console", "Classic Style", "Passive EQ colour, opto glue, tape and soft limiting.", |b| {
+        b.hp(26.0, S12);
+        b.veq(2.0, 3.0, 1.0, 4.0, 2.0, 5.0, 1.0, 0.0).s("ve_tube", 0.3);
+        b.vcomp(-18.0, 2.0, 22.0, 280.0, 2.0, 0.35);
+        b.tape(4.0, 1.0, 0.6, 0.1);
+        b.mono_sub();
+        b.mx(AZ2, 4.0, -0.8, 140.0);
+    }));
+    v.push(preset("Classic - Modern Bright & Loud", "Classic Style", "Contemporary, hyped top end and strong loudness.", |b| {
+        b.hp(28.0, S24);
+        b.eq(3, BELL, 300.0, -1.0, 1.0).eq(7, HSHELF, 11000.0, 2.0, 0.7);
+        b.exc(TAPE, [0.0, 0.1, 0.25, 0.35], 7.0);
+        b.dyn3([-24.0, -22.0, -22.0], [2.4, 2.4, 2.4], [1.0, 0.5, 0.5]);
+        b.img([1.0, 1.05, 1.25, 1.4], 0.0).mono_sub();
+        b.mx(AZ3, 7.0, -0.6, 110.0);
+    }));
+    v.push(preset("Classic - Vintage Warm 60s", "Classic Style", "Rolled highs, mono-ish bass, tape colour.", |b| {
+        b.hp(40.0, S12).lp(12000.0, S12);
+        b.tape(6.0, 0.0, 0.8, 0.4);
+        b.veq(2.0, 2.0, 1.0, 3.0, 1.0, 5.0, 1.0, 1.0).s("ve_tube", 0.3);
+        b.bass(1.0, 0.0, 0.0, 0.0, 0.0).s("bc_subf", 140.0);
+        b.mx(AZ1, 3.0, -1.0, 170.0);
+    }));
+    v.push(preset("Classic - Dark & Smooth", "Classic Style", "Soft highs, warm mids, relaxed energy.", |b| {
+        b.hp(26.0, S24);
+        b.eq(5, BELL, 4000.0, -1.0, 0.8).eq(7, HSHELF, 8000.0, -1.5, 0.6);
+        b.vcomp(-20.0, 2.0, 25.0, 300.0, 1.5, 0.3);
+        b.mx(AZ2, 3.0, -1.0, 160.0);
+    }));
+    v.push(preset("Classic - Maximum Weight", "Classic Style", "Low end first: weighty, tight, controlled.", |b| {
+        b.hp(24.0, S24);
+        b.eq(2, LSHELF, 60.0, 2.0, 0.7).eq(3, BELL, 250.0, -1.0, 1.0);
+        b.bass(1.0, 1.0, 0.0, 1.5, 0.4);
+        b.on(&["lef"]).s("lf_freq", 100.0).s("lf_punch", 1.5).s("lf_contrast", 0.5);
+        b.dyn3([-25.0, -22.0, -22.0], [2.8, 2.2, 2.0], [0.5, 0.0, 0.0]);
+        b.mx(AZ3, 6.0, -0.6, 110.0);
+    }));
+    v.push(preset("Classic - Vocal Spotlight", "Classic Style", "Brings the vocal forward using stem rebalance and presence EQ.", |b| {
+        b.stem([0.0, 0.0, 2.5, -0.5], [0.0, 0.0, 1.0, 0.0], 2.5);
+        b.eq(5, BELL, 3500.0, 0.8, 0.9);
+        b.hp(26.0, S24).mono_sub();
+        b.mx(AZ2, 3.5, -1.0, 150.0);
+    }));
+    v.push(preset("Classic - Mastering Starting Point", "Classic Style", "A neutral chain with everything useful prepared but nearly flat.", |b| {
+        b.hp(24.0, S24);
+        b.eq(3, BELL, 300.0, -0.5, 0.9).eq(7, HSHELF, 11000.0, 0.5, 0.7);
+        b.dyn3([-26.0, -24.0, -24.0], [1.4, 1.4, 1.4], [0.0, 0.0, 0.0]);
+        b.mono_sub();
+        b.mx(AZ2, 2.5, -1.0, 150.0);
+    }));
+
+    // Loudness / delivery targets
+    v.push(preset("Classic - Streaming Safe (-14)", "Classic Loudness", "Dynamic, transparent, aims near -14 LUFS.", |b| {
+        b.hp(25.0, S24).mono_sub();
+        b.dyn3([-26.0, -24.0, -24.0], [1.5, 1.5, 1.4], [0.0, 0.0, 0.0]);
+        b.mx(AZ1, 3.0, -1.0, 180.0);
+    }));
+    v.push(preset("Classic - Radio Ready", "Classic Loudness", "Dense and consistent for radio playback.", |b| {
+        b.hp(30.0, S24).mono_sub();
+        b.eq(5, BELL, 3000.0, 0.8, 0.9).eq(7, HSHELF, 10000.0, 1.0, 0.7);
+        b.dyn3([-25.0, -23.0, -23.0], [2.6, 2.6, 2.6], [1.0, 0.5, 0.5]);
+        b.mx(AZ3, 7.0, -0.8, 110.0);
+    }));
+    v.push(preset("Classic - Podcast -16 LUFS", "Classic Loudness", "Speech delivery near -16 LUFS.", |b| {
+        b.hp(80.0, S24);
+        b.dyn3([-28.0, -26.0, -26.0], [2.5, 2.5, 2.2], [2.0, 1.0, 1.0]);
+        b.mx(AZ2, 6.0, -1.5, 130.0);
+    }));
+    v.push(preset("Classic - Demo Loud & Quick", "Classic Loudness", "Fast way to make a rough mix loud for demos.", |b| {
+        b.hp(30.0, S24).mono_sub();
+        b.dyn3([-24.0, -22.0, -22.0], [2.4, 2.4, 2.4], [1.0, 0.5, 0.5]);
+        b.mx(AZ4, 9.0, -0.5, 100.0);
+    }));
+
     v
 }
 

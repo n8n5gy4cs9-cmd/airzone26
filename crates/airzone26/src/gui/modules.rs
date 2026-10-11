@@ -486,11 +486,14 @@ fn delay(ui: &mut Ui, c: &Ctx) {
     let p = &c.p.delay;
     sl!(ui, c.setter, p.time_l, p.time_r, p.feedback, p.lowcut, p.highcut, p.mix);
     toggle(ui, c.setter, &p.ping_pong);
+    toggle(ui, c.setter, &p.wet_solo);
 }
 
 fn reverb(ui: &mut Ui, c: &Ctx) {
     let p = &c.p.reverb;
     sl!(ui, c.setter, p.room, p.damping, p.width, p.predelay, p.lowcut, p.mix);
+    toggle(ui, c.setter, &p.wet_solo);
+    ui.label(RichText::new("Solo Wet removes the dry signal so you hear only the reverb. Remember to switch it off again before bouncing.").color(TEXT_DIM).size(11.0));
 }
 
 fn vlim(ui: &mut Ui, c: &Ctx) {

@@ -16,7 +16,8 @@ use airzone_dsp::spectral::SpectrumProfile;
 use nih_plug::prelude::*;
 use nih_plug_egui::create_egui_editor;
 use nih_plug_egui::egui::{self, vec2, Color32, Pos2, RichText, Sense, Stroke};
-use nih_plug_egui::resizable_window::ResizableWindow;
+use nih_plug::params::persist::PersistentField;
+use nih_plug_egui::EguiState;
 use parking_lot::Mutex;
 
 use crate::module_presets::{self, ModulePreset};
@@ -53,7 +54,15 @@ pub struct State {
     /// Name of the last applied preset per module.
     mod_current: HashMap<usize, String>,
     pub mod_save_name: String,
+    /// Reference A/B player.
+    refp_path: String,
+    refp_job: Option<RefTrackJob>,
+    show_about: bool,
+    /// Loaded reference tracks are kept alive here so the audio thread never frees the audio.
+    ref_tracks: Vec<Arc<airzone_dsp::reference::ReferenceTrack>>,
 }
+
+type RefTrackJob = Arc<Mutex<Option<Result<airzone_dsp::reference::ReferenceTrack, String>>>>;
 
 impl State {
     fn new(params: Arc<AirZoneParams>, shared: Arc<Shared>) -> Self {
@@ -85,7 +94,22 @@ impl State {
             mod_user_cache: HashMap::new(),
             mod_current: HashMap::new(),
             mod_save_name: String::new(),
+            refp_path: String::new(),
+            refp_job: None,
+            show_about: false,
+            ref_tracks: Vec::new(),
         }
+    }
+
+    fn start_reference_load(&mut self) {
+        let path = std::path::PathBuf::from(self.refp_path.trim().trim_matches('"'));
+        let sr = Shared::load(&self.shared.sample_rate).max(8000.0);
+        let job: RefTrackJob = Arc::new(Mutex::new(None));
+        self.refp_job = Some(job.clone());
+        self.status = "Loading reference track...".into();
+        std::thread::spawn(move || {
+            *job.lock() = Some(crate::analysis::load_reference(&path, sr));
+        });
     }
 
     /// Decode and analyse the reference WAV on a background thread.
@@ -100,6 +124,22 @@ impl State {
     }
 
     fn poll_jobs(&mut self) {
+        let loaded = self.refp_job.as_ref().and_then(|j| j.lock().take());
+        if let Some(res) = loaded {
+            self.refp_job = None;
+            match res {
+                Ok(track) => {
+                    let arc = Arc::new(track);
+                    self.status = format!("Reference loaded: {} ({:.1} LUFS)", arc.name, arc.lufs);
+                    self.ref_tracks.push(arc.clone());
+                    if self.ref_tracks.len() > 2 {
+                        self.ref_tracks.remove(0);
+                    }
+                    *self.shared.pending_ref_track.lock() = Some(arc);
+                }
+                Err(e) => self.status = format!("Could not load reference: {e}"),
+            }
+        }
         let done = self.ref_job.as_ref().and_then(|j| j.lock().take());
         if let Some(res) = done {
             self.ref_job = None;
@@ -139,7 +179,33 @@ impl State {
     }
 }
 
+/// Selectable window sizes (applied when the plug-in window is next opened).
+pub const WINDOW_SIZES: [(&str, u32, u32); 4] = [
+    ("Compact 900 x 600", 900, 600),
+    ("Standard 1040 x 680", 1040, 680),
+    ("Large 1280 x 820", 1280, 820),
+    ("Extra large 1600 x 1000", 1600, 1000),
+];
+
+/// Store a new window size; the host picks it up the next time the editor window is opened.
+pub fn set_window_size(p: &AirZoneParams, w: u32, h: u32) {
+    if let Ok(state) = Arc::try_unwrap(EguiState::from_size(w, h)) {
+        p.editor_state.set(state);
+    }
+}
+
+/// Saved sizes from older versions (or from a resize that went wrong) can be absurd, for example
+/// very wide and very low. Anything implausible is reset to the standard size.
+fn sanitize_window_size(p: &AirZoneParams) {
+    let (w, h) = p.editor_state.size();
+    let ratio = w as f32 / h.max(1) as f32;
+    if w < 640 || h < 420 || w > 3200 || h > 2200 || !(1.2..=2.0).contains(&ratio) {
+        set_window_size(p, 1040, 680);
+    }
+}
+
 pub fn create(params: Arc<AirZoneParams>, shared: Arc<Shared>) -> Option<Box<dyn Editor>> {
+    sanitize_window_size(&params);
     let state = State::new(params.clone(), shared);
     create_egui_editor(params.editor_state.clone(), state, |_ctx, _st| {}, |ctx, setter, st| {
         draw(ctx, setter, st);
@@ -170,9 +236,12 @@ fn draw(ctx: &egui::Context, setter: &ParamSetter, st: &mut State) {
     st.poll_jobs();
     let params = st.params.clone();
     let shared = st.shared.clone();
-    let es = params.editor_state.clone();
 
-    ResizableWindow::new("airzone_resize").min_size(vec2(480.0, 340.0)).show(ctx, &es, |ui| {
+    // NOTE: the window is deliberately NOT resized from inside the plug-in. Host resizing through
+    // the plug-in API is unreliable (REAPER flickered and resized itself). Instead the window size
+    // is chosen from the "Window" menu and applied the next time the plug-in window is opened;
+    // the layout adapts to whatever size the host gives us.
+    egui::CentralPanel::default().frame(egui::Frame::default()).show(ctx, |ui| {
         let narrow = ui.available_width() < 820.0;
         top_bar(ui, setter, st, &params, narrow);
         bottom_bar(ui, &params, &shared);
@@ -200,6 +269,7 @@ fn draw(ctx: &egui::Context, setter: &ParamSetter, st: &mut State) {
                     ui.label(RichText::new(st.status.clone()).size(11.0).color(ACCENT2));
                 }
             });
+            reference_strip(ui, st);
             ui.separator();
             let c = modules::Ctx { p: &params, setter, sh: &shared };
             egui::ScrollArea::both().auto_shrink([false, false]).show(ui, |ui| {
@@ -210,6 +280,105 @@ fn draw(ctx: &egui::Context, setter: &ParamSetter, st: &mut State) {
     });
 
     assistant::show(ctx, &mut st.assist, &params, &shared, setter);
+    about_window(ctx, st);
+}
+
+/// Plug-in version (from Cargo.toml).
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const AUTHOR: &str = "crowelian";
+pub const YEAR: &str = "2026";
+
+fn about_window(ctx: &egui::Context, st: &mut State) {
+    if !st.show_about {
+        return;
+    }
+    let mut open = st.show_about;
+    let sh = st.shared.clone();
+    egui::Window::new("About AirZone 26").open(&mut open).collapsible(false).resizable(false).default_width(380.0).show(ctx, |ui| {
+        ui.vertical_centered(|ui| {
+            ui.label(RichText::new("AIRZONE 26").size(30.0).strong().color(ACCENT));
+            ui.label(RichText::new(format!("Version {}", VERSION)).size(14.0));
+            ui.label(RichText::new(format!("by {} {}", AUTHOR, YEAR)).size(14.0).color(ACCENT2));
+        });
+        ui.separator();
+        ui.label("Full mastering suite for REAPER and other VST3 / CLAP hosts: 21 modules, Master Assistant, reference A/B player, pitch correction and 200+ presets.");
+        ui.add_space(4.0);
+        let sr = Shared::load(&sh.sample_rate);
+        let lat = sh.latency.load(Ordering::Relaxed);
+        ui.label(RichText::new(format!("Sample rate {:.0} Hz | total latency {} samples ({:.1} ms)", sr, lat, lat as f32 / sr.max(1.0) * 1000.0)).size(11.0).color(TEXT_DIM));
+        ui.label(RichText::new(format!("Build: {} {}", std::env::consts::OS, std::env::consts::ARCH)).size(11.0).color(TEXT_DIM));
+        ui.add_space(4.0);
+        ui.label(RichText::new("Licence: GPL-3.0-or-later. Built with Rust, NIH-plug and egui.").size(11.0).color(TEXT_DIM));
+        ui.label(
+            RichText::new("All algorithms and presets are original. Other products mentioned in the manual are trademarks of their owners; AirZone 26 is not affiliated with them.")
+                .size(10.0)
+                .color(TEXT_DIM),
+        );
+        ui.add_space(6.0);
+        ui.vertical_centered(|ui| {
+            ui.label(RichText::new(format!("(c) {} {}", YEAR, AUTHOR)).size(11.0));
+        });
+    });
+    st.show_about = open;
+}
+
+/// Reference A/B player: load a WAV, switch between the master and the reference (level matched),
+/// transport, loop and trim.
+fn reference_strip(ui: &mut egui::Ui, st: &mut State) {
+    let sh = st.shared.clone();
+    egui::CollapsingHeader::new("Reference A/B player").default_open(false).show(ui, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            ui.add(egui::TextEdit::singleline(&mut st.refp_path).desired_width(300.0).hint_text("path to a WAV reference track"));
+            if ui.button("Load").clicked() {
+                st.start_reference_load();
+            }
+        });
+        let len = Shared::load(&sh.ref_len_s);
+        if len <= 0.0 {
+            ui.label(RichText::new("Load an uncompressed WAV (up to 6 minutes). Then switch between your master and the reference at matched loudness.").size(11.0).color(TEXT_DIM));
+            return;
+        }
+        ui.horizontal_wrapped(|ui| {
+            let mon = sh.ref_monitor.load(Ordering::Relaxed);
+            if ui.selectable_label(!mon, "  Master  ").clicked() {
+                sh.ref_monitor.store(false, Ordering::Relaxed);
+            }
+            if ui.selectable_label(mon, "  Reference  ").clicked() {
+                sh.ref_monitor.store(true, Ordering::Relaxed);
+            }
+            let playing = sh.ref_playing.load(Ordering::Relaxed);
+            if ui.button(if playing { "Pause" } else { "Play" }).clicked() {
+                sh.ref_playing.store(!playing, Ordering::Relaxed);
+            }
+            if ui.button("Restart").clicked() {
+                sh.ref_seek.store(0.0, Ordering::Relaxed);
+            }
+            let mut pos = Shared::load(&sh.ref_pos);
+            if ui.add(egui::Slider::new(&mut pos, 0.0..=1.0).show_value(false)).changed() {
+                sh.ref_seek.store(pos, Ordering::Relaxed);
+            }
+            ui.label(RichText::new(format!("{:.0}s / {:.0}s", pos * len, len)).size(11.0).color(TEXT_DIM));
+        });
+        ui.horizontal_wrapped(|ui| {
+            let mut lp = sh.ref_loop.load(Ordering::Relaxed);
+            if ui.checkbox(&mut lp, "Loop").changed() {
+                sh.ref_loop.store(lp, Ordering::Relaxed);
+            }
+            let mut lm = sh.ref_level_match.load(Ordering::Relaxed);
+            if ui.checkbox(&mut lm, "Match loudness to master").changed() {
+                sh.ref_level_match.store(lm, Ordering::Relaxed);
+            }
+            let mut trim = Shared::load(&sh.ref_trim_db);
+            if ui.add(egui::Slider::new(&mut trim, -12.0..=12.0).suffix(" dB").text("Trim")).changed() {
+                sh.ref_trim_db.store(trim, Ordering::Relaxed);
+            }
+            ui.label(
+                RichText::new(format!("reference {:.1} LUFS, playing at {:+.1} dB", Shared::load(&sh.ref_lufs), Shared::load(&sh.ref_gain_db)))
+                    .size(11.0)
+                    .color(TEXT_DIM),
+            );
+        });
+    });
 }
 
 /// The chain order with every module present exactly once (old saved states may lack newer modules).
@@ -247,6 +416,9 @@ fn top_bar(ui: &mut egui::Ui, setter: &ParamSetter, st: &mut State, p: &AirZoneP
     egui::TopBottomPanel::top("top").show_inside(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new("AIRZONE 26").size(20.0).strong().color(ACCENT));
+            if ui.add(egui::Label::new(RichText::new(format!("v{}", VERSION)).size(11.0).color(TEXT_DIM)).sense(Sense::click())).on_hover_text("About AirZone 26").clicked() {
+                st.show_about = true;
+            }
             ui.separator();
             // preset navigation
             let n = st.presets.len();
@@ -289,6 +461,9 @@ fn top_bar(ui: &mut egui::Ui, setter: &ParamSetter, st: &mut State, p: &AirZoneP
             if ui.button("Master Assistant").clicked() {
                 st.assist.open = true;
             }
+            if ui.button("About").clicked() {
+                st.show_about = true;
+            }
             ui.separator();
             // A/B compare
             ui.label(RichText::new("A/B").size(11.0).color(TEXT_DIM));
@@ -317,6 +492,17 @@ fn top_bar(ui: &mut egui::Ui, setter: &ParamSetter, st: &mut State, p: &AirZoneP
             ui.label("to");
             ui.add(nih_plug_egui::widgets::ParamSlider::for_param(&p.output_gain, setter).with_width(gw));
             combo_small(ui, setter, &p.dither, "dither".into(), 70.0);
+            let cur = p.editor_state.size();
+            let cur_label = WINDOW_SIZES.iter().find(|(_, w, h)| (*w, *h) == cur).map(|(n, _, _)| *n).unwrap_or("Custom size");
+            egui::ComboBox::from_id_salt("window_size").selected_text("Window").width(64.0).show_ui(ui, |ui| {
+                ui.label(RichText::new(format!("Now: {cur_label}")).size(11.0).color(TEXT_DIM));
+                for (n, w, h) in WINDOW_SIZES {
+                    if ui.selectable_label(cur == (w, h), n).clicked() {
+                        set_window_size(p, w, h);
+                        st.status = "Window size saved. Close and reopen the plug-in window to apply it.".into();
+                    }
+                }
+            });
         });
     });
     if st.show_save {
