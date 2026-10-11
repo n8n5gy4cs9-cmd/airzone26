@@ -20,7 +20,7 @@ _Updated after every task; each task is committed to `main`._
 - ✅ T12 Vintage Compressor, Vintage EQ (Pultec-style), Vintage Limiter, Vintage Tape
 - ✅ T13 Delay + Reverb
 - ✅ T14 Meters: LUFS (M/S/I/LRA), true peak, correlation, spectrum analyzer
-- ⬜ T15 Master Assistant (analysis → suggested settings, genre targets)
+- ✅ T15 Master Assistant (analysis → suggested settings, genre targets)
 - ✅ T16 Mastering chain engine (module order, latency, bypass)
 
 ## Plugin
