@@ -21,7 +21,7 @@ _Updated after every task; each task is committed to `main`._
 - ✅ T13 Delay + Reverb
 - ✅ T14 Meters: LUFS (M/S/I/LRA), true peak, correlation, spectrum analyzer
 - ⬜ T15 Master Assistant (analysis → suggested settings, genre targets)
-- ⬜ T16 Mastering chain engine (module order, latency, bypass)
+- ✅ T16 Mastering chain engine (module order, latency, bypass)
 
 ## Plugin
 - ⬜ T17 nih-plug parameters for every module + mapping to engine

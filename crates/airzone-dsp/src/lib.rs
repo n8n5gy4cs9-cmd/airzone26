@@ -1,6 +1,7 @@
 //! AirZone 26 DSP engine: pure-Rust mastering processors with no plugin-framework dependency.
 
 pub mod biquad;
+pub mod chain;
 pub mod dynamics;
 pub mod eq;
 pub mod fx;

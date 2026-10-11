@@ -346,7 +346,7 @@ impl Default for Stabilizer {
             enabled: false,
             amount: 0.5,
             range_db: 4.0,
-            slope_db_oct: -3.0,
+            slope_db_oct: -4.5,
             speed: 0.3,
             use_reference: false,
             level: [-90.0; STAB_BANDS],
