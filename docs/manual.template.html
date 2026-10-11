@@ -44,7 +44,7 @@ details table.t{margin:0;border-left:0;border-right:0}
 .dummy{border:1px solid #6aa7e0;border-left:5px solid #3b8fe0;background:rgba(59,143,224,.09);border-radius:0 10px 10px 0;padding:10px 16px;margin:16px 0}
 .dummy::before{content:"In plain words";display:block;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#3b8fe0;margin-bottom:2px}
 figure{margin:20px 0;padding:10px;background:var(--card);border:1px solid var(--line);border-radius:10px}
-figure img{width:100%;height:auto;display:block;border-radius:6px}
+figure svg,figure img{width:100%;height:auto;display:block;border-radius:6px}
 figcaption{font-size:13px;color:var(--dim);margin-top:8px}
 figcaption ol{margin:6px 0 0;padding-left:20px}
 .flow{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
@@ -102,6 +102,7 @@ figcaption ol{margin:6px 0 0;padding-left:20px}
   <a href="#presets">8. Presets</a>
   <a href="#metering">9. Metering</a>
   <a href="#workflows">10. Mastering workflows</a>
+  <a href="#tutorials">10a. Tutorials (metal/rock/pop)</a>
   <a href="#latency">11. Latency &amp; rendering</a>
   <a href="#build">12. Building from source</a>
   <a href="#trouble">13. Troubleshooting</a>
@@ -184,7 +185,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 
 <h2 id="ui">4. The interface</h2>
 <div class="dummy">The window has a list of modules on the left (the "chain"), the selected module's knobs in the middle, and level meters at the bottom. Click a module name to edit it; tick its box to switch it on.</div>
-<figure><img src="img/main-window.svg" alt="AirZone 26 main window" loading="lazy"><figcaption><b>Figure: main window.</b> <em>Illustration of the layout, not a literal screenshot.</em><ol><li>Preset browser, A/B, Window menu</li><li>Module chain rail</li><li>Spectrum analyzer</li><li>Module editor</li><li>Meters (LUFS, true peak, gain reduction)</li></ol></figcaption></figure>
+<figure><!--SVG:main-window--><figcaption><b>Figure: main window.</b> <em>Illustration of the layout, not a literal screenshot.</em><ol><li>Preset browser, A/B, Window menu</li><li>Module chain rail</li><li>Spectrum analyzer</li><li>Module editor</li><li>Meters (LUFS, true peak, gain reduction)</li></ol></figcaption></figure>
 
 <table class="t">
 <tr><th>Area</th><th>What it does</th></tr>
@@ -333,7 +334,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 
 <h3 id="m-pitch">Pitch Correction</h3>
 <div class="dummy">Fixes out-of-tune notes. Choose <b>Vocal</b> for singing, <b>Instrument</b> for one melody line, <b>Full Song</b> for a whole mix. Lower retune speed = more natural; higher = robotic effect.</div>
-<figure><img src="img/pitch-correction.svg" alt="Pitch correction panel" loading="lazy"><figcaption><b>Figure: Pitch Correction panel.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
+<figure><!--SVG:pitch-correction--><figcaption><b>Figure: Pitch Correction panel.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
 
 <p>Natural-sounding automatic pitch correction in three modes. It is <b>off by default</b> and sits first in the chain.</p>
 <table class="t">
@@ -395,7 +396,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 
 <h2 id="assistant">7. Master Assistant</h2>
 <div class="dummy">The Assistant listens to your song, then suggests settings. Press the button, play the <b>loudest part</b> for at least 5 seconds, and read the suggestions. Apply what you agree with.</div>
-<figure><img src="img/master-assistant.svg" alt="Master Assistant" loading="lazy"><figcaption><b>Figure: Master Assistant.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
+<figure><!--SVG:master-assistant--><figcaption><b>Figure: Master Assistant.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
 
 <p>Open it with <b>🎛 Master Assistant</b>.</p>
 <ol>
@@ -411,7 +412,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 
 <h3 id="refplayer">Reference A/B player</h3>
 <div class="dummy">Lets you compare your master with a professional song at the same loudness, so your ears are not fooled by volume. Louder always sounds "better" at first.</div>
-<figure><img src="img/reference-player.svg" alt="Reference A/B player" loading="lazy"><figcaption><b>Figure: Reference A/B player.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
+<figure><!--SVG:reference-player--><figcaption><b>Figure: Reference A/B player.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
 
 <p>Open <b>Reference A/B player</b> (under the spectrum), type the path of a WAV file (uncompressed PCM or float, up to 6 minutes) and press <b>Load</b>. Then:</p>
 <ul>
@@ -423,7 +424,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 
 <h3 id="tonal">AirZone 26 Tonal Balance (companion plug-in)</h3>
 <div class="dummy"><b>Tonal Balance</b> tells you if your song has too much or too little bass, mids or treble compared with a typical song in the same genre. It only <em>shows</em>; it never changes your sound. Put it last in the chain, play the loudest part, and look at the five gauges: when they are in the grey zone, the balance is normal.</div>
-<figure><img src="img/tonal-balance.svg" alt="Tonal Balance plug-in" loading="lazy"><figcaption><b>Figure: AirZone 26 Tonal Balance.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
+<figure><!--SVG:tonal-balance--><figcaption><b>Figure: AirZone 26 Tonal Balance.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
 
 <p>A second plug-in in the package, intended for the end of the master chain (after the limiter). It passes audio through unchanged and shows how the <em>tonal balance</em> of your music compares with a target:</p>
 <ul>
@@ -509,6 +510,72 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <h3>G. Mono and vinyl safety</h3>
 <ol><li>Bass Control: Sub Mono 100 %, Sub/Bass split 100–150 Hz.</li><li>Imager: reduce low-band width; watch Corr. stay positive.</li></ol>
 
+<h2 id="tutorials">10a. Tutorials: metal, rock and atmospheric pop</h2>
+<div class="dummy">Mastering is the last 10 %. 90 % of a great master is a good <b>mix</b>. This tutorial has two parts: <b>Part 1</b> prepares the individual tracks and buses (you can load AirZone 26 on a track or bus, and use it with only the modules you need), <b>Part 2</b> is the actual master on the master track. Always compare at equal loudness with a reference song in the same style (use the <a href="#refplayer">Reference A/B player</a>).</div>
+<h3 id="tut-prep">Part 1: Preparing the mix (before mastering)</h3>
+<p>AirZone 26 is built as a master chain, but it is a normal plug-in, so you can place it on a track or bus and enable just one or two modules. Use your DAW's own EQ/compressor for the basics; use AirZone where it is special (Pitch Correction, Dynamic EQ, Imager, Exciter). Leave <b>6 dB of headroom</b> on the mix bus (peaks around -6 dBFS) and keep any limiter off the mix bus: AirZone's Maximizer does that on the master.</p>
+<table class="t">
+<tr><th>Track</th><th>What to do</th><th>AirZone module to use</th></tr>
+<tr><td><b>Vocals</b></td><td>Fix pitch gently, remove boxiness (200-400 Hz), tame harshness (3-6 kHz) only when loud, add air. Keep the vocal slightly too loud rather than too quiet; the master will not rescue a buried vocal.</td><td>Pitch Correction (Vocal mode, retune speed slow-medium, humanize high), Dynamic EQ for harshness, Vintage EQ for air</td></tr>
+<tr><td><b>Drums</b></td><td>Make the kick and snare hit. High-pass overheads, tighten the toms. Group the drums on a bus and glue them lightly.</td><td>Impact (attack up), Dynamics or Vintage Comp on the bus (2:1-4:1, 1-3 dB reduction)</td></tr>
+<tr><td><b>Bass</b></td><td>Cut sub below ~30 Hz, keep it mono under 120 Hz, separate kick and bass: kick owns ~60 Hz, bass ~90 Hz or the reverse.</td><td>Bass Control (mono below), Low End Focus</td></tr>
+<tr><td><b>Guitars</b></td><td>Pan double-tracked rhythm guitars hard left/right. Cut mud (200-300 Hz) and fizz above 8 kHz on distorted guitars. Leave the 2-4 kHz "bite".</td><td>Equalizer, Imager on the guitar bus for width</td></tr>
+<tr><td><b>Keys / synths / pads</b></td><td>Keep them out of the vocal's range with an EQ dip at 1-3 kHz. Pads can be wide; the bass part of a pad should be narrow.</td><td>Imager (width above 200 Hz), Equalizer, Reverb for depth</td></tr>
+<tr><td><b>Mix bus</b></td><td>Peaks at -6 dBFS, no limiter, mono-compatible (check the Imager vectorscope and correlation meter).</td><td>none or a light Vintage Comp (1-2 dB)</td></tr>
+</table>
+<div class="dummy">Rule of thumb: if you have to boost more than 3 dB in mastering, go back and fix it in the mix. Mastering polishes; it does not repair.</div>
+
+<h3 id="tut-metal">Part 2a: Mastering metal</h3>
+<div class="dummy">Metal is dense: distorted guitars, fast double-kick and loud vocals fill every frequency. The goal is <b>power without harshness or mush</b>. The dangers are sizzle (4-8 kHz), boom (100-250 Hz) and clicking kicks that vanish when the limiter works.</div>
+<ol>
+<li><b>Preset start:</b> load a Metal/Loud preset from the Factory catalogue, or begin from a Universal Master and switch off what you do not need.</li>
+<li><b>Master Assistant:</b> press it, play the loudest chorus for 10+ seconds, apply the suggestions. Metal is already loud, so expect it to propose cuts rather than boosts.</li>
+<li><b>Equalizer:</b> high-pass at 25-30 Hz; broad dip -1 to -2 dB at 200-300 Hz if muddy; a small notch (-1.5 dB, narrow) around 3-4 kHz if guitars are fizzy. Optionally +1 dB shelf above 10 kHz for air.</li>
+<li><b>Dynamic EQ / Spectral Shaper:</b> tame the harsh 4-8 kHz only when it peaks (threshold so that it reduces about 1-2 dB on loud hits). This lets you keep brightness in quiet parts.</li>
+<li><b>Bass Control + Low End Focus:</b> mono below 100-120 Hz, tighten the 40-90 Hz region so double-kick stays defined.</li>
+<li><b>Dynamics (multiband):</b> ratio 1.5:1-2:1, slow attack (30+ ms) so the transients pass, ~2 dB reduction on the low band, ~1 dB elsewhere. Do not overcompress: metal needs its punch.</li>
+<li><b>Impact:</b> a little transient boost (+1 to +2 dB) brings back the snare/kick click that limiting reduces.</li>
+<li><b>Exciter:</b> optional, low Tape or Warm on the mids for thickness (5-10 %). Skip on already distorted material if it sounds gritty.</li>
+<li><b>Imager:</b> keep the lows mono, leave mids at 100 %, raise highs to 110-120 %. Check the vectorscope: the cloud should be vertical-ish and symmetrical.</li>
+<li><b>Maximizer:</b> use AZ-2 or AZ-3 for a punchy transparent sound, or <b>AZ-6 (clip + limit)</b> for a hard modern metal master. Ceiling <b>-1.0 dBTP</b>. Raise Gain until you hit about 3-6 dB of gain reduction; stop when the kick starts to sound smaller.</li>
+<li><b>Loudness target:</b> about -9 to -8 LUFS integrated is typical for metal; streaming will turn it down anyway, so do not sacrifice dynamics. Check <b>Codec Preview</b> (then turn it off).</li>
+<li><b>Tonal Balance:</b> put it last, genre Rock/Metal-like target, compare, small fixes only.</li>
+</ol>
+<h3 id="tut-rock">Part 2b: Mastering rock</h3>
+<div class="dummy">Rock should feel <b>alive and natural</b>: guitars with bite, a punchy snare, vocals in front. You can be a little less loud than metal and keep more dynamics.</div>
+<ol>
+<li><b>Start:</b> a Rock preset or Universal Master. Run the Master Assistant on the loudest chorus.</li>
+<li><b>Equalizer:</b> high-pass 25 Hz, +1 dB at 80-100 Hz for the kick/bass, -1 dB at 250 Hz if boxy, +1 dB at 3 kHz for presence and +1 dB shelf above 10 kHz.</li>
+<li><b>Vintage Comp:</b> ratio 2:1, slow attack (20-30 ms), release auto/fast, 1-2 dB reduction for glue. This is the "rock" sound: the track breathes with the drums.</li>
+<li><b>Vintage Tape or Exciter (Tape):</b> 10-20 % for warmth and mild saturation on the whole mix.</li>
+<li><b>Impact:</b> keep neutral or +1 dB attack on the mid band for a snappy snare.</li>
+<li><b>Imager:</b> mono under 120 Hz; widen the highs slightly (105-115 %). Guitars panned hard L/R do most of the width already.</li>
+<li><b>Maximizer:</b> AZ-1 or AZ-2, ceiling -1.0 dBTP, 2-4 dB of gain reduction. Target roughly -10 to -9 LUFS integrated.</li>
+<li><b>Check:</b> Bypass (loudness matched) and the Reference A/B player with a favourite record. If the master feels flatter than the reference, reduce limiting before adding more of anything.</li>
+</ol>
+<h3 id="tut-pop">Part 2c: Mastering atmospheric pop</h3>
+<div class="dummy">Atmospheric pop (dream pop, ambient pop, cinematic pop) lives on <b>space, softness and a clear vocal</b>. It should be wide and smooth, not loud and aggressive. Protect the delicate reverb tails and the dynamics.</div>
+<ol>
+<li><b>Start:</b> a Pop / Airy / Gentle preset, or Universal Master with the Maximizer turned down.</li>
+<li><b>Equalizer:</b> high-pass at 20-25 Hz, gentle -1 dB at 300 Hz for clarity, +1 to +2 dB shelf above 8-10 kHz for air. Use Match EQ against a reference you love if you want a quick starting point.</li>
+<li><b>Clarity:</b> a little detail lift (10-25 %) to keep pads and reverb from turning to haze.</li>
+<li><b>Dynamics:</b> very gentle (1.3:1-2:1), slow attack, 1 dB reduction. Preserve the dynamics.</li>
+<li><b>Vintage EQ (Pultec style):</b> low boost with a small cut at the same frequency for round, deep low end; high boost at 10 kHz for silk.</li>
+<li><b>Exciter (Warm) or Vintage Tape:</b> subtle, 5-15 %, for glue and analog warmth.</li>
+<li><b>Imager:</b> widen the mids and highs (110-130 %); keep the bass mono. Verify mono compatibility with the correlation meter (stay above 0). A wide reverb that collapses in mono will vanish on phone speakers.</li>
+<li><b>Reverb (only if needed):</b> a short hall at 5-10 % mix, to glue the elements. Use <b>Solo Wet</b> to hear what you are adding, then turn it off.</li>
+<li><b>Maximizer:</b> AZ-4 or AZ-7 (smooth), ceiling -1.0 dBTP, only 1-3 dB reduction. Target -14 to -11 LUFS integrated; this style sounds better with room to breathe.</li>
+<li><b>Vocal-forward?</b> If the vocal is slightly buried, try Stem EQ and raise Vocals by +1 dB (an estimate, so check for artefacts), or go back to the mix.</li>
+</ol>
+<div class="warn"><b>These are starting points, not laws.</b> The numbers depend on the mix. Change one thing at a time, compare at equal loudness, and trust your ears (and a few different speakers) over any meter. Finally: switch Codec Preview off before exporting.</div>
+<h3 id="tut-export">Final checklist before export</h3>
+<ul>
+<li>True peak at or below -1 dBTP; Codec Preview and Solo Wet switched off; Bypass off.</li>
+<li>Integrated loudness in your target range; mono-compatibility checked.</li>
+<li>Dither on only for the last conversion to 16-bit.</li>
+<li>Listen once on headphones, speakers and a phone.</li>
+</ul>
+
 <h2 id="latency">11. Latency &amp; rendering</h2>
 <div class="dummy">The plug-in needs a few milliseconds to "look ahead". REAPER compensates automatically; you do not have to do anything.</div>
 
@@ -578,7 +645,7 @@ cargo xtask bundle airzone26 --release
 <p>AirZone 26 is free software released under the GNU General Public License v3 or later. The VST3 interface is used under its open-source licence. Built with <a href="https://github.com/robbert-vdh/nih-plug">NIH-plug</a>, <a href="https://github.com/emilk/egui">egui</a>, RealFFT and Hound.</p>
 <p>VST is a registered trademark of Steinberg Media Technologies GmbH. All other product names mentioned (including those of other mastering suites) are trademarks of their respective owners and are used for identification only; AirZone 26 is not affiliated with or endorsed by them, and contains none of their code or proprietary algorithms.</p>
 <h3 id="screens">About the pictures</h3>
-<p>The figures in this manual are drawn illustrations of the layout with numbered call-outs, not literal screen captures. To add real screenshots, save them as PNG files into <code>docs/img/</code>, change the <code>src</code> of the figure in <code>docs/manual.template.html</code>, and run <code>cargo run -p airzone26 --example gen_docs</code>.</p>
+<p>The figures in this manual are drawn illustrations of the layout with numbered call-outs, not literal screen captures. To add real screenshots, save them as PNG files into <code>docs/img/</code> and replace the <code>&lt;!--SVG:name--&gt;</code> marker of a figure in <code>docs/manual.template.html</code> with an <code>&lt;img src="img/name.png"&gt;</code> tag, and run <code>cargo run -p airzone26 --example gen_docs</code>.</p>
 <p style="color:var(--dim);margin-top:48px">AirZone 26 v{{VERSION}} · manual generated from the source tree.</p>
 </main>
 </div>

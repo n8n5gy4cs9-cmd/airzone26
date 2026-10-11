@@ -70,6 +70,13 @@ fn main() {
     }
     let total: usize = groups.iter().map(|(_, r)| r.len()).sum();
 
+    let mut template = template;
+    for name in ["main-window", "tonal-balance", "master-assistant", "reference-player", "pitch-correction"] {
+        let svg = std::fs::read_to_string(root.join("img").join(format!("{name}.svg"))).unwrap_or_default();
+        let svg = svg.trim_start_matches(|c| c != '<' ).to_string();
+        let svg = match svg.find("<svg") { Some(i) => svg[i..].to_string(), None => svg };
+        template = template.replace(&format!("<!--SVG:{name}-->"), &svg);
+    }
     let out = template
         .replace("<!--PRESETS-->", &ph)
         .replace("<!--PARAMS-->", &pa)
