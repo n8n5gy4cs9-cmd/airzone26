@@ -16,7 +16,7 @@ _Updated after every task; each task is committed to `main`._
 
 ## Remaining DSP
 - ✅ T10 Spectral modules: Stem EQ, Match EQ, Stabilizer, Spectral Shaper (single FFT hub)
-- ⬜ T11 Unlimiter (upward peak/transient restoration)
+- ✅ T11 Unlimiter (upward peak/transient restoration)
 - ⬜ T12 Vintage Compressor, Vintage EQ (Pultec-style), Vintage Limiter, Vintage Tape
 - ⬜ T13 Delay + Reverb
 - ⬜ T14 Meters: LUFS (M/S/I/LRA), true peak, correlation, spectrum analyzer

@@ -9,4 +9,5 @@ pub mod spectral;
 pub mod stft;
 pub mod stereo;
 pub mod transient;
+pub mod unlimiter;
 pub mod util;
