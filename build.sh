@@ -61,6 +61,9 @@ die()  { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 command -v cargo  >/dev/null || die "cargo not found – install Rust from https://rustup.rs"
 command -v rustup >/dev/null || die "rustup not found – install Rust from https://rustup.rs"
 
+say "Refreshing docs/manual.html"
+cargo run -q -p airzone26 --example gen_docs || warn "manual regeneration failed (continuing)"
+
 if [ "$want_mac" -eq 1 ] && [ "$HOST" != mac ]; then
   die "macOS bundles can only be built on a Mac (Apple SDK + codesign). Run this script on your Mac, or push to GitHub and use the 'Build' workflow."
 fi

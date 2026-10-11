@@ -41,6 +41,12 @@ details{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:v
 summary{cursor:pointer;padding:10px 14px;font-weight:600}
 summary .n{color:var(--dim);font-weight:400;font-size:13px;margin-left:8px}
 details table.t{margin:0;border-left:0;border-right:0}
+.dummy{border:1px solid #6aa7e0;border-left:5px solid #3b8fe0;background:rgba(59,143,224,.09);border-radius:0 10px 10px 0;padding:10px 16px;margin:16px 0}
+.dummy::before{content:"In plain words";display:block;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#3b8fe0;margin-bottom:2px}
+figure{margin:20px 0;padding:10px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+figure img{width:100%;height:auto;display:block;border-radius:6px}
+figcaption{font-size:13px;color:var(--dim);margin-top:8px}
+figcaption ol{margin:6px 0 0;padding-left:20px}
 .flow{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
 .flow span{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:13px}
 .flow span.fft{border-color:var(--acc)}
@@ -111,6 +117,8 @@ details table.t{margin:0;border-left:0;border-right:0}
 </div>
 
 <h2 id="intro">1. Introduction</h2>
+<div class="dummy">AirZone 26 is the last plug-in on your song. You put it on REAPER's <b>master track</b> and it makes the finished mix sound more polished and louder, without it getting distorted. Think of it as the finishing touch before you publish a track.</div>
+
 <p>AirZone 26 is a mastering plug-in written in Rust. It puts twenty-three processing modules, a metering section, a <b>Master Assistant</b> and {{PRESET_COUNT}} factory presets behind a single plug-in window, so you can take a finished stereo mix to a release-ready master on the master track of one REAPER project.</p>
 <div class="cards">
   <div class="card"><b>23 modules</b>Pitch correction, Clarity, Codec Preview, EQ, dynamic EQ, match EQ, stabilizer, spectral shaper, stem EQ, multiband dynamics, exciter, imager, bass control, transient shaping, vintage comp/EQ/tape/limiter, delay, reverb, unlimiter and a 5-algorithm maximizer.</div>
@@ -123,6 +131,8 @@ details table.t{margin:0;border-left:0;border-right:0}
 <div class="note"><b>Honest scope note.</b> AirZone 26 is an independent project <em>inspired by</em> the workflow of modern all-in-one mastering suites. All algorithms are original. In particular, <b>Stem EQ</b> is a signal-processing approximation (harmonic/percussive and stereo-centre analysis) and not a neural-network separator, and the <b>Unlimiter</b> is an upward expander, not a trained declipper. Both are excellent for corrections of a few dB; they will not perform miracles on extreme material.</div>
 
 <h2 id="install">2. Installation</h2>
+<div class="dummy">Copy the plug-in files into the folder your DAW scans, then tell REAPER to re-scan. If you do not see it in the FX list afterwards, the files are in the wrong folder or REAPER has not re-scanned yet.</div>
+
 <p>Download the build for your system from the project's <em>Actions → Build</em> artifacts or <em>Releases</em> page. Each ZIP contains two plug-ins in VST3 and CLAP format - <b>AirZone 26</b> (the mastering suite) and <b>AirZone 26 Tonal Balance</b> (a companion meter, see below) - and this manual.</p>
 <table class="t">
 <tr><th>System</th><th>Archive</th><th>Formats</th></tr>
@@ -131,6 +141,7 @@ details table.t{margin:0;border-left:0;border-right:0}
 </table>
 
 <h3 id="install-win">Windows 10 / 11</h3>
+
 <ol>
 <li>Copy <code>AirZone 26.vst3</code> to <code>C:\Program Files\Common Files\VST3\</code>.</li>
 <li>Optionally copy <code>AirZone 26.clap</code> to <code>C:\Program Files\Common Files\CLAP\</code>.</li>
@@ -139,6 +150,7 @@ details table.t{margin:0;border-left:0;border-right:0}
 <p>No runtime installation is needed (the C runtime is linked statically).</p>
 
 <h3 id="install-mac">macOS (Apple Silicon)</h3>
+
 <ol>
 <li>Copy <code>AirZone 26.vst3</code> to <code>~/Library/Audio/Plug-Ins/VST3/</code> (or <code>/Library/Audio/Plug-Ins/VST3/</code> for all users).</li>
 <li>Optionally copy <code>AirZone 26.clap</code> to <code>~/Library/Audio/Plug-Ins/CLAP/</code>.</li>
@@ -149,6 +161,7 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <p>The plug-in is a native <code>arm64</code> binary — REAPER must run as the native Apple Silicon build (not under Rosetta) to load it.</p>
 
 <h3 id="reaper">REAPER setup</h3>
+
 <ol>
 <li><b>VST3:</b> <em>Options → Preferences → Plug-ins → VST</em>, make sure the VST3 folder above is listed, then click <em>Re-scan</em> (or <em>Clear cache and re-scan</em>).</li>
 <li><b>CLAP:</b> REAPER 7 and newer load CLAP natively from the CLAP folders; use <em>Options → Preferences → Plug-ins → CLAP</em> if you keep them elsewhere.</li>
@@ -158,6 +171,8 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <div class="note">Tip: right-click the plug-in's FX window title → <em>Pin</em> and use <em>Float</em> for a larger window; the editor is resizable by your host's window frame.</div>
 
 <h2 id="quick">3. Quick start</h2>
+<div class="dummy">Fastest way to a result: load a preset, play the loudest part of your song, and listen. If it sounds better and not squashed, you are done. Use <b>Bypass</b> to compare with the original.</div>
+
 <ol>
 <li>Put the plug-in on the master track and play your song.</li>
 <li>Pick a starting preset from the preset menu at the top (for example <b>Universal Master</b>), or click <b>🎛 Master Assistant</b> and let it listen to the loudest part of the song.</li>
@@ -168,6 +183,9 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 </ol>
 
 <h2 id="ui">4. The interface</h2>
+<div class="dummy">The window has a list of modules on the left (the "chain"), the selected module's knobs in the middle, and level meters at the bottom. Click a module name to edit it; tick its box to switch it on.</div>
+<figure><img src="img/main-window.svg" alt="AirZone 26 main window" loading="lazy"><figcaption><b>Figure: main window.</b> <em>Illustration of the layout, not a literal screenshot.</em><ol><li>Preset browser, A/B, Window menu</li><li>Module chain rail</li><li>Spectrum analyzer</li><li>Module editor</li><li>Meters (LUFS, true peak, gain reduction)</li></ol></figcaption></figure>
+
 <table class="t">
 <tr><th>Area</th><th>What it does</th></tr>
 <tr><td><b>Top bar</b></td><td>Preset browser (◀ ▶ step through presets, the menu lists them by category, hover for a description), <b>Save</b>, <b>Master Assistant</b>, global <b>Bypass</b>, input and output gain, and <b>Dither</b> selection.</td></tr>
@@ -188,6 +206,8 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 </table>
 
 <h2 id="chain">5. Signal chain</h2>
+<div class="dummy">Audio flows through the modules from top to bottom, like water through pipes. The order matters: fix problems first, add colour next, make it loud last.</div>
+
 <p>Audio enters through <b>Input gain</b>, passes through every <em>enabled</em> module in the order shown in the rail, goes through <b>Output gain</b> and the optional <b>Dither</b>, and leaves. A disabled module costs nothing and adds no latency.</p>
 <p>Default order:</p>
 <div class="flow">
@@ -204,17 +224,25 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 </ul>
 
 <h2 id="modules">6. Modules</h2>
+<div class="dummy">A module is one tool, like an equalizer or a compressor. Every module starts off, so nothing changes until you tick its box. Each has its own preset menu: pick one, then tweak.</div>
+
 <p>Every parameter is also listed with its range and default in the <a href="#reference">parameter reference</a>.</p>
 
 <h3 id="m-eq">Equalizer</h3>
+<div class="dummy">Turns bass, mids and treble up or down. Too boomy? Pull the low band down. Too dull? Lift the top.</div>
+
 <p>Eight bands. Each band has an on switch, a <b>Type</b> (Bell, Low Shelf, High Shelf, High Pass, Low Pass, Notch), <b>Frequency</b>, <b>Gain</b>, <b>Q</b>, <b>Slope</b> (12/24/36/48 dB/oct for the pass filters) and a <b>Placement</b>:</p>
 <ul><li><b>Stereo</b> – both channels. <b>Mid</b> / <b>Side</b> – only the mid or side signal (for example a side-only high shelf for air). <b>Left</b> / <b>Right</b> – one channel.</li></ul>
 <p>The curve shows the combined response. Band defaults are laid out as a typical mastering EQ: 1 high-pass, 2 low shelf, 3–6 bells, 7 high shelf, 8 low-pass.</p>
 
 <h3 id="m-dyneq">Dynamic EQ</h3>
+<div class="dummy">An equalizer that only acts when a frequency gets too loud, for example taming a harsh sound only when it is loud.</div>
+
 <p>Four bell filters whose gain follows the level in their own band. <b>Static Gain</b> is always applied. <b>Dynamic Range</b> is how far the gain may move: <em>negative</em> values cut when the band exceeds <b>Threshold</b> (de-essing, de-muddying), <em>positive</em> values boost. <b>Ratio</b>, <b>Attack</b> and <b>Release</b> shape the response. Use it for problems that come and go.</p>
 
 <h3 id="m-match">Match EQ</h3>
+<div class="dummy">Listens to a song you like and nudges your tone toward it. It is a starting point: always check by ear.</div>
+
 <p>Captures the average tonal balance (64 log-spaced bands) of two sources and applies the difference.</p>
 <ol>
 <li>Play your mix and click <b>● Learn Source</b> for 20–60 seconds of representative material, then stop.</li>
@@ -224,54 +252,89 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <p>Only tonal <em>shape</em> is matched (overall level differences are removed), so loudness is untouched. Captured profiles are saved inside your REAPER project. The plug-in must be <em>playing in real time</em> to learn live; the WAV analysis works offline.</p>
 
 <h3 id="m-stab">Stabilizer</h3>
+<div class="dummy">Smooths out a tonal balance that jumps around, so the mix feels even from start to end.</div>
+
 <p>A slow, adaptive equaliser (32 bands) that nudges the spectrum toward a target slope. It is meant to keep the tonal balance consistent from section to section, not to paint a new sound. <b>Amount</b> scales the effect, <b>Range</b> limits the maximum boost/cut per band, <b>Target Slope</b> is the desired tilt in dB/octave (−4.5 is typical for finished music), <b>Speed</b> sets how fast it adapts, and <b>Use Reference</b> makes it follow the Match EQ reference's shape. The bar chart shows the correction in real time.</p>
 
 <h3 id="m-shaper">Spectral Shaper</h3>
+<div class="dummy">Finds frequencies that stick out and squeezes only those, like a very precise "harshness remover".</div>
+
 <p>A frequency-domain resonance suppressor. It compares each FFT bin with the local average (<b>Selectivity</b> sets how many bins around it count as "local") and reduces peaks that stick out by more than <b>Sensitivity</b> dB, by an amount set by <b>Depth</b>, only between <b>Low Limit</b> and <b>High Limit</b>. <b>Tilt</b> adds a gentle spectral tilt. <b>Listen to Delta</b> plays back only what is being removed — use it to be sure you are taking away harshness and not body.</p>
 
 <h3 id="m-veq">Vintage EQ</h3>
+<div class="dummy">An EQ that adds a warm, classic hardware flavour. Gentle moves give a pleasant "analog" tone.</div>
+
 <p>A passive-EQ-style tone shaper. The low section has a <b>Low Frequency</b> selector (20/30/60/100 Hz), <b>Low Boost</b> and <b>Low Atten</b>; using both at once gives the classic "bigger yet tighter" bass. The high section has a <b>High Boost</b> bell with selectable frequency (3–16 kHz) and <b>Bandwidth</b>, and a <b>High Atten</b> shelf with selectable frequency (5/10/20 kHz). <b>Tube</b> adds gentle valve-style output saturation. Knob values 0–10 are not dB; 10 is roughly +14 dB on the low boost.</p>
 
 <h3 id="m-dyn">Dynamics</h3>
+<div class="dummy">Makes loud parts quieter so the whole song feels more solid and consistent. Three bands means bass, mids and highs are handled separately.</div>
+
 <p>Three-band compressor with phase-aligned Linkwitz-Riley 4th-order crossovers (<b>Crossover 1/2</b>). Each band has Threshold, Ratio, Knee, Attack, Release and make-up Gain, plus a downward <b>expander</b> (Expander Threshold/Ratio) to lower noise floors. <b>Stereo Link</b> 100 % compresses both channels equally (stable image); lower values react to each channel separately. <b>Mid/Side</b> processes mid and side independently. Gain-reduction meters show each band.</p>
 
 <h3 id="m-vcomp">Vintage Comp</h3>
+<div class="dummy">A compressor with a vintage character. Higher "ratio" or lower "threshold" means more squeezing; it also adds warmth.</div>
+
 <p>An opto-style compressor: gentle, programme-dependent release made of a fast and a slow stage, so short peaks recover quickly while sustained compression releases slowly. <b>Input</b> drives the detector, <b>Warmth</b> adds valve-style saturation, <b>Mix</b> gives parallel compression.</p>
 
 <h3 id="m-unlim">Unlimiter</h3>
+<div class="dummy">If a mix was crushed too hard, this brings some life and punch back by restoring peaks.</div>
+
 <p>Brings back transients on over-limited material by boosting peaks that stand out above the short-term level. <b>Amount</b> scales the effect, <b>Max Boost</b> is the largest boost applied to a peak, <b>Threshold</b> is how far a peak must stand above the body, and <b>Release</b> how fast the boost relaxes. <b>Compensate</b> gently lowers the body to keep loudness similar. Place it <em>first</em> and follow it with the Maximizer. Because the source's lost peaks cannot be recreated exactly, expect an improvement in punch and dynamics rather than a perfect reconstruction.</p>
 
 <h3 id="m-impact">Impact</h3>
+<div class="dummy">Makes drums hit harder or softer by shaping the start of each sound (the "attack").</div>
+
 <p>Three-band attack/sustain shaper. Positive <b>Attack</b> adds snap to drums; negative softens them. <b>Sustain</b> raises or lowers the tail between hits. Use small values (±1–3 dB) on a full mix.</p>
 
 <h3 id="m-lef">Low End Focus</h3>
+<div class="dummy">Tightens the bass so the kick and bass guitar sit together instead of fighting each other.</div>
+
 <p>Works on everything below <b>Focus Frequency</b>: <b>Punch</b> accentuates kicks and bass attacks, <b>Sustain</b> trims or extends their tails, <b>Contrast</b> tightens the low end by adding level-dependent compression.</p>
 
 <h3 id="m-bass">Bass Control</h3>
+<div class="dummy">Keeps the deepest bass steady and, if you like, in the centre (mono) so it plays well on every system.</div>
+
 <p>Splits the low end into <b>Sub</b> (below the Sub/Bass split), <b>Bass</b> (to the Bass/Low-Mid split) and the rest, and gives you separate <b>Gain</b>, <b>Mono</b> (fold to centre) and — for the bass — <b>Punch</b> and <b>Tighten</b>. The three level bars show where your energy sits; <b>Auto Balance</b> slowly adjusts the sub level to reach the <b>Sub-Bass Target</b> (the dB difference between sub and bass). A sub region folded to mono (100 %) is the single easiest way to improve translation to club systems and vinyl.</p>
 
 <h3 id="m-clarity">Clarity</h3>
+<div class="dummy">Adds a bit of sparkle and detail to dull-sounding mixes. A little goes a long way.</div>
+
 <p>Brings out quiet detail and air in the upper mids and highs without making loud passages harsh. The band above <b>Lower Edge</b> is watched by a stereo-linked level detector; quiet material in that band is lifted by up to 8 dB (<b>Detail</b>), loud material is left alone. <b>Harmonics</b> adds a little anti-aliased saturation for sparkle, <b>Warmth</b> is a &plusmn;3 dB low shelf at 200 Hz to balance a brighter result, and <b>Mix</b> blends the effect in parallel. The Boost bar shows the detail lift being applied. Typical use: Detail 30-50 %, Lower Edge 2 kHz, Harmonics 15-25 %.</p>
 
 <h3 id="m-exc">Exciter</h3>
+<div class="dummy">Adds subtle harmonic "colour" (tape, tube, warmth) so the mix sounds richer and brighter without just boosting treble.</div>
+
 <p>Four-band harmonic exciter with anti-aliased (first-order ADAA) saturation. <b>Mode</b>: <em>Tape</em> (odd harmonics, smooth), <em>Tube</em> and <em>Warm</em> (even harmonics), <em>Retro</em> (brighter, edgier). Each band has <b>Drive</b> (how hard the band is pushed into the shaper), <b>Amount</b> (blend of saturated signal) and <b>Gain</b>. A little Amount on the top band is a classic "air" tool; keep low bands subtle.</p>
 
 <h3 id="m-tape">Vintage Tape</h3>
+<div class="dummy">Imitates a tape machine: soft saturation, gentle glue, slightly rounded highs.</div>
+
 <p>Tape machine emulation: <b>Drive</b> into saturation, selectable <b>Speed</b> (7.5, 15, 30 ips; lower speeds mean a bigger head bump and darker top), <b>Saturation</b>, <b>Wow &amp; Flutter</b> (pitch modulation), <b>Hiss</b> and <b>Age</b> (progressive high-frequency loss). Adds a fixed 16-sample latency.</p>
 
 <h3 id="m-img">Imager</h3>
+<div class="dummy">Controls how wide the stereo picture is. More width = bigger feeling; too much = hollow in mono. Check the vectorscope.</div>
+
 <p>Four-band stereo width (0 % = mono, 100 % = unchanged, 200 % = double). <b>Stereoize</b> adds a mono-compatible decorrelated component to widen narrow sources. <b>Balance</b> shifts left/right. In the Imager panel, <b>Width</b> and <b>Corr.</b> show the current stereo width and phase correlation (negative = phase problems).</p>
 
 <h3 id="m-delay">Delay</h3>
+<div class="dummy">Repeats the sound after a short time (an echo). Use sparingly on a master. <b>Solo Wet</b> lets you hear just the echoes.</div>
+
 <p>Stereo delay with independent left/right times, <b>Feedback</b>, <b>Ping-Pong</b> and low/high cuts on the feedback path. Use sparingly in mastering — a short, filtered slap can add depth to sparse material.</p>
 
 <h3 id="m-rev">Reverb</h3>
+<div class="dummy">Adds room or hall ambience. <b>Solo Wet</b> plays only the reverb so you can judge it, then switch it off again.</div>
+
 <p>A compact algorithmic (comb + all-pass) reverb: <b>Room Size</b>, <b>Damping</b>, <b>Width</b>, <b>Pre-Delay</b>, <b>Low Cut</b> and <b>Mix</b>. <b>Solo Wet</b> removes the dry signal so you can hear only the reverb (the Delay has the same switch for its echoes) - switch it off again before bouncing. In mastering, 3–8 % of a small room can "glue" dry stems.</p>
 
 <h3 id="m-stem">Stem EQ</h3>
+<div class="dummy">Turns the vocals, drums, bass or other parts of a finished song up or down a little without having the original stems. It is an estimate, not magic.</div>
+
 <p>Estimates four stems — <b>Bass, Drums, Vocals, Other</b> — and lets you change the level (±12 dB) and tone (±6 dB tilt) of each without opening the mix. Stems are estimated from harmonic-vs-percussive structure and stereo-centre energy, so separation is approximate. <b>Focus</b> sets how hard the masks are (higher = more separation, more artefacts). <b>Solo</b> lets you audition what the algorithm believes each stem to be. For best results keep moves under ±4 dB.</p>
 
 <h3 id="m-pitch">Pitch Correction</h3>
+<div class="dummy">Fixes out-of-tune notes. Choose <b>Vocal</b> for singing, <b>Instrument</b> for one melody line, <b>Full Song</b> for a whole mix. Lower retune speed = more natural; higher = robotic effect.</div>
+<figure><img src="img/pitch-correction.svg" alt="Pitch correction panel" loading="lazy"><figcaption><b>Figure: Pitch Correction panel.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
+
 <p>Natural-sounding automatic pitch correction in three modes. It is <b>off by default</b> and sits first in the chain.</p>
 <table class="t">
 <tr><th>Mode</th><th>Use it on</th><th>How it works</th></tr>
@@ -299,13 +362,19 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <div class="warn"><b>Limits.</b> Monophonic modes expect one pitch at a time; running them on a full mix or on chords will not work. Very large corrections (more than about 3 semitones) always sound processed with any pitch shifter. Latency is about 70 ms in Vocal/Instrument mode (reported to the host).</div>
 
 <h3 id="m-codec">Codec Preview</h3>
+<div class="dummy">Previews how your master might sound after MP3/streaming compression, so you can hear what gets lost. Remember to turn it off before exporting!</div>
+
 <p>A <b>monitoring tool</b> that lets you hear roughly how your master will behave after lossy encoding. It simulates MP3-like, AAC-like and Opus-like encodes at 32-320 kbps: the typical encoder low-pass (for example about 16 kHz at 128 kbps), joint-stereo simplification (the side signal is quantised more coarsely at low bitrates), per-band quantisation that creates spectral &ldquo;holes&rdquo; and quantisation noise, and the pre-echo smearing of a long transform window. <b>Listen to Difference</b> plays only what the simulated encode removes - if that sounds musical, the encode will be audible.</p>
 <div class="warn"><b>It is not a real encoder.</b> The simulation shows tendencies (what is lost first, which master is more fragile), not an exact result. Always switch it <em>off</em> before rendering or exporting your master. It shares the 2048-sample FFT latency with the other FFT modules.</div>
 
 <h3 id="m-vlim">Vintage Limiter</h3>
+<div class="dummy">A classic-style limiter that stops peaks from going too loud, with a hardware character.</div>
+
 <p>A fast, coloured peak limiter with selectable <b>Input</b> drive, <b>Attack</b>, <b>Release</b> and <b>Character</b> (saturation). Use it as a tone-shaping stage <em>before</em> the Maximizer; it does not guarantee the ceiling.</p>
 
 <h3 id="m-max">Maximizer</h3>
+<div class="dummy">The loudness maker. Push the <b>Gain</b> up to get louder; the <b>Ceiling</b> is a wall the sound cannot cross, so it never clips. If it starts to sound squashed or distorted, back off.</div>
+
 <p>The final lookahead limiter. <b>Gain</b> pushes the signal into the <b>Ceiling</b>; the ceiling is a <em>true-peak</em> ceiling when <b>True Peak</b> is on (inter-sample peaks are estimated with 4× interpolation). <b>Release</b> sets the recovery time, <b>Character</b> blends in soft saturation before the limiter, and <b>Stereo Independence</b> lets channels limit separately (0 % = fully linked, best image).</p>
 <table class="t">
 <tr><th>Algorithm</th><th>Lookahead</th><th>Behaviour</th></tr>
@@ -320,9 +389,14 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <p>A final 0.8 ms safety stage is always active so the ceiling holds in every mode. The <b>GR</b> meter shows the current gain reduction. As a rule of thumb, more than 6–8 dB of reduction on a full mix will start to sound dense; the Master Assistant warns you above 8 dB.</p>
 
 <h3 id="dither">Dither</h3>
+<div class="dummy">Dither is a tiny bit of noise added when exporting to 16-bit so the quiet endings sound smooth. Turn it on only for the very last export, once.</div>
+
 <p>Choose <b>16 bit</b>, <b>20 bit</b> or <b>24 bit</b> in the top bar to add noise-shaped TPDF dither to the final output — <em>only</em> when you render to that bit depth, and only once, at the very end of the chain. Leave it <b>Off</b> when rendering 32-bit float.</p>
 
 <h2 id="assistant">7. Master Assistant</h2>
+<div class="dummy">The Assistant listens to your song, then suggests settings. Press the button, play the <b>loudest part</b> for at least 5 seconds, and read the suggestions. Apply what you agree with.</div>
+<figure><img src="img/master-assistant.svg" alt="Master Assistant" loading="lazy"><figcaption><b>Figure: Master Assistant.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
+
 <p>Open it with <b>🎛 Master Assistant</b>.</p>
 <ol>
 <li>Choose a <b>Genre</b> (it selects the target tonal balance, limiter algorithm, compression style and minimum stereo width) and a <b>Target</b>: Streaming −14 LUFS / −1 dBTP, Loud −9 LUFS / −0.3 dBTP, Broadcast −23 LUFS / −1 dBTP, or Custom.</li>
@@ -336,6 +410,9 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <div class="warn"><b>It guides, you decide.</b> Always check the result by ear, at matched loudness, against a reference track.</div>
 
 <h3 id="refplayer">Reference A/B player</h3>
+<div class="dummy">Lets you compare your master with a professional song at the same loudness, so your ears are not fooled by volume. Louder always sounds "better" at first.</div>
+<figure><img src="img/reference-player.svg" alt="Reference A/B player" loading="lazy"><figcaption><b>Figure: Reference A/B player.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
+
 <p>Open <b>Reference A/B player</b> (under the spectrum), type the path of a WAV file (uncompressed PCM or float, up to 6 minutes) and press <b>Load</b>. Then:</p>
 <ul>
 <li><b>Master / Reference</b> switches the output between your processed mix and the reference with a 5 ms cross-fade. The meters, spectrum and vectorscope show whatever you are listening to, so you can compare loudness and tonal balance directly.</li>
@@ -345,6 +422,9 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <p>The reference is played back instead of the master only while <b>Reference</b> is selected; it never changes the processing. Remember to switch back to <b>Master</b> before you render.</p>
 
 <h3 id="tonal">AirZone 26 Tonal Balance (companion plug-in)</h3>
+<div class="dummy"><b>Tonal Balance</b> tells you if your song has too much or too little bass, mids or treble compared with a typical song in the same genre. It only <em>shows</em>; it never changes your sound. Put it last in the chain, play the loudest part, and look at the five gauges: when they are in the grey zone, the balance is normal.</div>
+<figure><img src="img/tonal-balance.svg" alt="Tonal Balance plug-in" loading="lazy"><figcaption><b>Figure: AirZone 26 Tonal Balance.</b> <em>Illustration of the layout, not a literal screenshot.</em></figcaption></figure>
+
 <p>A second plug-in in the package, intended for the end of the master chain (after the limiter). It passes audio through unchanged and shows how the <em>tonal balance</em> of your music compares with a target:</p>
 <ul>
 <li>Five region gauges (Low 40-200 Hz, Low-Mid 200-800 Hz, Mid 0.8-3 kHz, High-Mid 3-8 kHz, High 8-16 kHz) show the deviation from the target in dB; the grey band is the tolerance (default &plusmn;3 dB). Green = inside, amber = outside, red = far outside.</li>
@@ -354,8 +434,29 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <li><b>Analysis Memory</b> sets how many seconds of music are averaged. Play the loudest part of the song for 10-20 seconds for a stable picture.</li>
 </ul>
 <p>Only the <em>shape</em> of the spectrum is compared (the overall level is removed), so the meter is independent of loudness.</p>
+<h4>Step-by-step: using Tonal Balance</h4>
+<ol>
+<li><b>Insert it last</b> on the master track, after AirZone 26 (and after the limiter). It is a separate plug-in called <em>AirZone 26 Tonal Balance</em>; it does not change the sound.</li>
+<li><b>Pick a target</b>: choose a genre (Pop, Rock, Hip-Hop, EDM, ...) or switch to <b>Custom</b>.</li>
+<li><b>Play the loudest section</b> for 10-20 seconds. The gauges fill in once enough audio has been heard. If you jump around in the song, press <b>Reset</b> to start a fresh average.</li>
+<li><b>Read the gauges.</b> The middle line is "exactly like the target". Bar to the right = too much in that region; to the left = too little. <b>Green</b> inside the grey tolerance zone, <b>amber</b> slightly outside, <b>red</b> far outside.</li>
+<li><b>Read the curve.</b> Teal is your song, amber the target and its shaded range. Where teal leaves the shaded area, that is where the balance is off.</li>
+<li><b>Fix it in AirZone 26</b>, not in the meter: e.g. Low is red-high, so lower the Equalizer's low band or the Bass Control; High is red-low, so add a little high shelf or Clarity. Re-check after each change.</li>
+<li><b>Use your own reference</b>: play a song you love, press <b>Capture current balance</b> (or <b>Load WAV</b>) to make it the custom target, then play your master and match it.</li>
+</ol>
+<table class="t">
+<tr><th>Control</th><th>Meaning</th></tr>
+<tr><td>Tolerance</td><td>Width of the grey zone in dB (1-8, default 3). Smaller is stricter.</td></tr>
+<tr><td>Analysis Memory</td><td>How many seconds are averaged (1-30, default 6). Longer = steadier but slower to react.</td></tr>
+<tr><td>Genre / Custom</td><td>Selects the target curve.</td></tr>
+</table>
+<div class="dummy">Don't chase perfection. Targets are averages; a dark moody track may <em>deliberately</em> sit outside them. Use the meter to spot accidents (a booming 150 Hz, a missing top end), not to flatten your taste. Both formats install in the same folders as the main plug-in; in REAPER search "Tonal".</div>
+<div class="warn"><b>Needs the same loudness context.</b> The meter ignores loudness and only compares shape, but if it sits before the limiter it will see a different tone than the final output. Put it at the very end.</div>
+
 
 <h2 id="presets">8. Presets</h2>
+<div class="dummy">A preset is a saved set of knob positions. Pick one as a starting point, then adjust. Save your own with <b>Save</b>.</div>
+
 <p>Pick presets from the menu in the top bar or step through them with ◀ ▶. A preset is a <em>complete</em> snapshot: applying it first returns every parameter to its default (the Bypass switch and your chain order are left alone) and then sets the preset's values. Preset changes are sent through the host, so they are undoable in REAPER and recordable as automation. Hover a preset name for its description.</p>
 <h3>Module presets</h3>
 <p>Every one of the 23 modules also has its <b>own preset menu</b> at the top of its panel (about 145 module presets in total: reverb rooms, delay timings, EQ curves, compressor styles, limiter algorithms, pitch settings and more). A module preset changes <em>only that module</em>: it resets the module's parameters, applies the preset and switches the module on. Use the arrows to step through the list, <b>Reset</b> to return the module to its defaults, and the name box with <b>Save</b> to store your own module presets (<code>Presets/Modules/&lt;module&gt;/</code> in the user folder below).</p>
@@ -378,6 +479,8 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <!--PRESETS-->
 
 <h2 id="metering">9. Metering</h2>
+<div class="dummy">Meters show how loud your music is. For streaming, aim around -14 LUFS integrated and keep the true peak below -1 dB.</div>
+
 <table class="t">
 <tr><th>Meter</th><th>Meaning</th></tr>
 <tr><td>Momentary / Short / Integrated</td><td>LUFS per ITU-R BS.1770-4 K-weighting: 400 ms window, 3 s window, and gated whole-programme value (absolute gate −70 LUFS, relative gate −10 LU). Integrated needs a few seconds of audio; press <b>Reset meters</b> before measuring a new pass.</td></tr>
@@ -389,6 +492,8 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 </table>
 
 <h2 id="workflows">10. Mastering workflows</h2>
+<div class="dummy">Recipes: follow one step by step if you do not know where to begin.</div>
+
 <h3>A. Clean loudness for streaming</h3>
 <ol><li>Load <b>Streaming −14 LUFS Safe</b>.</li><li>Play the loudest chorus; raise the Maximizer <b>Gain</b> until Integrated reads about −14 LUFS.</li><li>Check True pk stays below −1 dBTP.</li></ol>
 <h3>B. Competitive loud master</h3>
@@ -405,6 +510,8 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <ol><li>Bass Control: Sub Mono 100 %, Sub/Bass split 100–150 Hz.</li><li>Imager: reduce low-band width; watch Corr. stay positive.</li></ol>
 
 <h2 id="latency">11. Latency &amp; rendering</h2>
+<div class="dummy">The plug-in needs a few milliseconds to "look ahead". REAPER compensates automatically; you do not have to do anything.</div>
+
 <table class="t">
 <tr><th>Source</th><th>Latency</th></tr>
 <tr><td>FFT group (any of Stem EQ, Match EQ, Stabilizer, Spectral Shaper enabled)</td><td>2048 samples (46 ms at 44.1 kHz, 43 ms at 48 kHz)</td></tr>
@@ -419,6 +526,8 @@ xattr -dr com.apple.quarantine "~/Library/Audio/Plug-Ins/CLAP/AirZone 26.clap"</
 <p>Sample rates from 44.1 kHz to 192 kHz are supported.</p>
 
 <h2 id="build">12. Building from source</h2>
+<div class="dummy">Only needed if you want to compile the plug-in yourself. Normal users just need the finished files.</div>
+
 <p>Requirements: Rust (stable, 1.80 or newer). On Linux also the X11/GL development packages used by the GUI library.</p>
 <pre><code>git clone https://github.com/n8n5gy4cs9-cmd/airzone26
 cd airzone26
@@ -440,6 +549,8 @@ cargo xtask bundle airzone26 --release
 </table>
 
 <h2 id="trouble">13. Troubleshooting</h2>
+<div class="dummy">Something odd? Check this list first: most problems are a plug-in in the wrong folder, a module left on, or Bypass active.</div>
+
 <table class="t">
 <tr><th>Problem</th><th>Solution</th></tr>
 <tr><td>REAPER does not list the plug-in</td><td>Re-scan with <em>Clear cache and re-scan</em>. On macOS make sure REAPER is the Apple Silicon build and the quarantine flag was removed. On Windows check the file was unblocked.</td></tr>
@@ -455,14 +566,19 @@ cargo xtask bundle airzone26 --release
 </table>
 
 <h2 id="reference">14. Parameter reference</h2>
+<div class="dummy">A long list of every knob and what it is called inside REAPER. Use it to find parameters for automation.</div>
+
 <p>All {{PARAM_COUNT}} parameters. <em>ID</em> is the stable identifier stored in projects and preset files. Percentages are shown as 0–100 in the interface.</p>
 <!--PARAMS-->
 
 <h2 id="legal">15. Legal &amp; credits</h2>
+
 <div class="note"><b>Not included on purpose.</b> Neural-network stem separation (the Stem EQ is DSP-based) and the proprietary limiter algorithms of commercial suites cannot be bundled: trained models and those algorithms are neither available nor licensable here. AirZone 26 offers its own seven limiter algorithms (AZ-1 to AZ-7) instead.</div>
 <p>AirZone 26 v{{VERSION}} — © 2026 crowelian. The About window (click the version number or the <b>About</b> button) shows the same information.</p>
 <p>AirZone 26 is free software released under the GNU General Public License v3 or later. The VST3 interface is used under its open-source licence. Built with <a href="https://github.com/robbert-vdh/nih-plug">NIH-plug</a>, <a href="https://github.com/emilk/egui">egui</a>, RealFFT and Hound.</p>
 <p>VST is a registered trademark of Steinberg Media Technologies GmbH. All other product names mentioned (including those of other mastering suites) are trademarks of their respective owners and are used for identification only; AirZone 26 is not affiliated with or endorsed by them, and contains none of their code or proprietary algorithms.</p>
+<h3 id="screens">About the pictures</h3>
+<p>The figures in this manual are drawn illustrations of the layout with numbered call-outs, not literal screen captures. To add real screenshots, save them as PNG files into <code>docs/img/</code>, change the <code>src</code> of the figure in <code>docs/manual.template.html</code>, and run <code>cargo run -p airzone26 --example gen_docs</code>.</p>
 <p style="color:var(--dim);margin-top:48px">AirZone 26 v{{VERSION}} · manual generated from the source tree.</p>
 </main>
 </div>

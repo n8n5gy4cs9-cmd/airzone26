@@ -64,6 +64,8 @@ _Updated after every task; each task is committed to `main`._
 - ❌ T36f Proprietary "IRC" limiter algorithms: cannot be reproduced; AirZone has seven original algorithms instead
 - ⬜ T36 (old note) Still missing vs. Ozone: Clarity module, Codec Preview, separate Tonal Balance Control plug-in, reference-track A/B player, ML stem separation, Maximizer "IRC" algorithms (ours are original AZ-1..5)
 
+- 🧪 T40 Manual: "In plain words" boxes for every section/module, 5 illustrative figures (docs/img), step-by-step Tonal Balance guide; build.sh regenerates manual.html (gen_docs). Current docs/manual.html was spliced by hand: its preset/parameter tables are stale until gen_docs runs.
+
 Legend 🧪 = written, not compiled/tested yet.
 
 ### What was wrong with the Master Assistant (fixed in T32)
